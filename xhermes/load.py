@@ -30,7 +30,6 @@ def open_hermesdataset(
     ds = open_boutdataset(
         datapath=datapath,
         inputfilepath=inputfilepath,
-        geometry=None,
         chunks=chunks,
         run_name=run_name,
         info=False,
