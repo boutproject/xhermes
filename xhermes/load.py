@@ -55,8 +55,15 @@ def open_hermesdataset(
 
     for varname in ds:
         da = ds[varname]
-        if len(da.dims) == 4:
-            # 4D field => Mark as Hermes-normalised data
+        if len(da.dims) == 4:  # Time-evolving field
+            da.attrs["units_type"] = "hermes"
+
+            # Check if data already has units and conversion attributes
+            if ("units" in da.attrs) and ("conversion" in da.attrs):
+                print(varname + " already annotated")
+                continue  # No need to add attributes
+
+            # Mark as Hermes-normalised data
             da.attrs["units_type"] = "hermes"
 
             if varname[:2] == "NV":
@@ -168,7 +175,14 @@ def open(
     import xhermes
     ds = xhermes.open('data')
     ```
-    where 'data' is a directory
+    where 'data' is a directory.
+
+    Can also load a grid file containing geometry information:
+
+    Example:
+    ```
+    bd = xhermes.open(".", geometry="toroidal", gridfilepath="../tokamak.nc")
+    ```
 
     Parameters
     ----------
