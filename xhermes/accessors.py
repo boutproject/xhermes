@@ -59,7 +59,7 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
         if units_type == "SI":
             # already un-normalised
             return
-        elif ("units" in self.data.attrs) and ("conversion" in self.data.attrs)
+        elif ("units" in self.data.attrs) and ("conversion" in self.data.attrs):
             # Normalise using values
             self.data *= self.data.attrs["conversion"]
             self.data.attrs["units_type"] = "SI"
