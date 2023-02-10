@@ -63,6 +63,4 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
             # Normalise using values
             self.data *= self.data.attrs["conversion"]
             self.data.attrs["units_type"] = "SI"
-        else:
-            raise ValueError("Unrecognised units_type: " + units_type)
         return self
