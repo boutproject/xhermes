@@ -10,6 +10,7 @@ def open_hermesdataset(
     run_name=None,
     info=True,
     unnormalise=True,
+    debug_variable_names = False,
     **kwargs,
 ):
     """
@@ -60,7 +61,8 @@ def open_hermesdataset(
 
             # Check if data already has units and conversion attributes
             if ("units" in da.attrs) and ("conversion" in da.attrs):
-                print(varname + " already annotated")
+                if debug_variable_names is True:
+                    print(varname + " already annotated")
                 continue  # No need to add attributes
 
             # Mark as Hermes-normalised data
