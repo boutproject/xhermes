@@ -223,6 +223,26 @@ def open_hermesdataset(
                 c_type = component
             components[component] = {"type": c_type, "options": c_opts}
         ds.attrs["components"] = components
+        
+        # Identify dimensions
+        dims = list(ds.squeeze().dims)
+        dims.remove("t")
+        meta["dimensions"] = len(dims)
+        
+        # Identify species
+        meta["species"] = [x.split("P")[1] for x in ds.data_vars if x.startswith("P") and len(x) < 4]
+        meta["charged_species"] = [x for x in meta["species"] if "e" in x or "+" in x]
+        meta["ion_species"] = [x for x in meta["species"] if "+" in x]
+        meta["neutral_species"] = list(set(meta["species"]).difference(set(meta["charged_species"])))
+        
+        # Prepare dictionary mapping recycling species pairs
+        if "recycling" in ds.attrs["components"]:
+            meta["recycling_pairs"] = dict()
+            for ion in meta["ion_species"]:
+                if "recycle_as" in ds.options[ion].keys():
+                    meta["recycling_pairs"][ion] = ds.options[ion]["recycle_as"]
+                else:
+                    print(f"No recycling partner found for {ion}")
 
     return ds
 
