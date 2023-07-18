@@ -19,7 +19,7 @@ The data from a Hermes-3 run can be loaded with just
     import xhermes
     ds = xhermes.open(hermes_simulation_path)
 
-where the `data` directory is assumed to contain the `BOUT.dmp.*.nc`
+where the `hermes_simulation_path` directory is assumed to contain the `BOUT.dmp.*.nc`
 files and a `BOUT.settings` file. `open` returns an instance of an
 `xarray.Dataset` which contains BOUT- and Hermes-specific information
 in the `attrs`, so represents a general structure for storing all of
