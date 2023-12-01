@@ -150,6 +150,7 @@ def open_hermesdataset(
             # Radial cell width
             da.attrs.update(
                 {
+                    "units_type": "hermes",
                     "units": "Wb",
                     "conversion": rho_s0**2 * Bnorm,
                     "standard_name": "radial cell width",
@@ -160,6 +161,7 @@ def open_hermesdataset(
             # Jacobian
             da.attrs.update(
                 {
+                    "units_type": "hermes",
                     "units": "m/radian T",
                     "conversion": rho_s0 / Bnorm,
                     "standard_name": "Jacobian",
@@ -170,6 +172,7 @@ def open_hermesdataset(
             # Metric tensor term
             da.attrs.update(
                 {
+                    "units_type": "hermes",
                     "units": "m2",
                     "conversion": rho_s0**2,
                     "standard_name": "g_22",
@@ -180,16 +183,18 @@ def open_hermesdataset(
             # Metric tensor term
             da.attrs.update(
                 {
+                    "units_type": "hermes",
                     "units": "T-2m-2",
                     "conversion": (Bnorm * rho_s0)**2,
                     "standard_name": "g11",
                     "long_name": "g11 term in the metric tensor",
                 }
             )
-        elif varname == "t":
+        elif varname == "t" or varname == "t_array":
             # Time
             da.attrs.update(
                 {
+                    "units_type": "hermes",
                     "units": "s",
                     "conversion": 1/Omega_ci,
                     "standard_name": "time",
