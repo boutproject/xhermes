@@ -231,7 +231,7 @@ def open_hermesdataset(
         
         # Identify dimensions
         dims = list(ds.squeeze().dims)
-        dims.remove("t")
+        if "t" in dims: dims.remove("t")
         meta["dimensions"] = len(dims)
         
         # Identify species
