@@ -8,7 +8,7 @@ def open_hermesdataset(
     inputfilepath=None,
     chunks={},
     run_name=None,
-    info=True,
+    info=False,
     unnormalise=True,
     debug_variable_names = False,
     **kwargs,
@@ -33,7 +33,7 @@ def open_hermesdataset(
         inputfilepath=inputfilepath,
         chunks=chunks,
         run_name=run_name,
-        info=False,
+        info=info,
         **kwargs,
     )
 
