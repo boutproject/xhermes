@@ -237,9 +237,6 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
             return
         elif ("units" in self.data.attrs) and ("conversion" in self.data.attrs):
             # Normalise using values
-            # print(self.data.name)
-            # if self.data.name == "dx":
-                # print("*"*20)
             self.data *= self.data.attrs["conversion"]
             self.data.attrs["units_type"] = "SI"
         return self
