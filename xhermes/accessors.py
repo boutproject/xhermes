@@ -25,7 +25,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             da.hermes.unnormalise()
 
         # Un-normalise coordinates
-        for coord in ["t"]:
+        for coord in ["dx", "dy", "dz", "t"]:
             units_type = self.data[coord].attrs.get("units_type", "unknown")
             if (units_type == "unknown") or (units_type == "SI"):
                 continue
