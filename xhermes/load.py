@@ -157,6 +157,17 @@ def open_hermesdataset(
                     "long_name": "Radial cell width in flux space",
                 }
             )
+        elif varname == "dz":
+            # Radial cell width
+            da.attrs.update(
+                {
+                    "units_type": "SI",
+                    "units": "radian",
+                    "conversion": 1,
+                    "standard_name": "toroidal cell angular width",
+                    "long_name": "Poloidal cell angular width",
+                }
+            )
         elif varname == "J":
             # Jacobian
             da.attrs.update(

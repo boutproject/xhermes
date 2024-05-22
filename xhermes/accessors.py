@@ -25,7 +25,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             da.hermes.unnormalise()
 
         # Un-normalise coordinates
-        for coord in ["t"]:
+        for coord in ["dx", "dy", "dz", "t"]:
             units_type = self.data[coord].attrs.get("units_type", "unknown")
             if (units_type == "unknown") or (units_type == "SI"):
                 continue
@@ -76,14 +76,14 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         # Derive and append metadata for the cross-sectional area
         # and volume. The conversions are 1 because the derivation
         # is from already-normalised parameters
-        ds["da"] = ds.J / np.sqrt(ds.g_22)
+        ds["da"] = ds.dx * ds.dz * ds.J / np.sqrt(ds.g_22)
         ds["da"].attrs.update({
             "conversion" : 1,
             "units" : "m2",
             "standard_name" : "cross-sectional area",
             "long_name" : "Cell parallel cross-sectional area"})
         
-        ds["dv"] = ds.J * ds.dy
+        ds["dv"] = ds.J * ds.dx * ds.dy * ds.dz 
         ds["dv"].attrs.update({
             "conversion" : 1,
             "units" : "m3",
