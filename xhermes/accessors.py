@@ -65,10 +65,6 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         for i in range(2,n):
             pos[i] = pos[i-1] + 0.5*dy[i-1] + 0.5*dy[i]
 
-        # Guard replace to get position at boundaries
-        pos[-2] = (pos[-3] + pos[-2])/2
-        pos[1] = (pos[1] + pos[2])/2 
-
         # Set 0 to be at first cell boundary in domain
         pos = pos - pos[1]
         ds["pos"] = (["y"], pos)
@@ -94,6 +90,42 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             "standard_name" : "cell volume",
             "long_name" : "Cell Volume"})
         
+        return ds
+
+    def guard_replace_1d(self):
+        """
+        Replace the inner guard cells with the values of their respective
+        cell edges, i.e. the values at the model inlet and at the target.
+        This is done by interpolating the value between the two neighbouring
+        cell centres.
+
+        Cell order at target:
+        ... | last | guard | second guard (unused)
+                   ^target      
+            |  -3  |  -2   |      -1
+          
+        Returns
+        ----------
+        - Dataset with the new geometry 
+
+        """
+        ds = self.data
+
+        # Guard replace to get position at boundaries
+        # Cannot modify inplace since dims are immutable in Xarray
+        newpos = ds["pos"].values
+        attrs = ds["pos"].attrs
+        newpos[-2] = (newpos[-3] + newpos[-2])/2
+        newpos[1] = (newpos[1] + newpos[2])/2 
+
+        ds.assign_coords(pos = newpos)
+        ds["pos"].attrs.update(attrs)
+
+        for param in ds.data_vars:
+            if "pos" in ds[param].dims:
+                ds[param][-2] = (ds[param][-2] + ds[param][-3])/2
+                ds[param][1] = (ds[param][1] + ds[param][2])/2
+
         return ds
     
     def extract_2d_tokamak_geometry(self):
