@@ -59,14 +59,12 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         dy = ds.coords["dy"].values
         n = len(dy)
         pos = np.zeros(n)
-        pos[0] = -0.5*dy[1]
-        pos[1] = 0.5*dy[1]
+        pos[0] = 0.5*dy[0]
 
-        for i in range(2,n):
+        for i in range(1,n):
             pos[i] = pos[i-1] + 0.5*dy[i-1] + 0.5*dy[i]
+        pos -= (pos[1] + pos[2]) / 2     # Set 0 to be at first cell boundary in domain
 
-        # Set 0 to be at first cell boundary in domain
-        pos = pos - pos[1]
         ds["pos"] = (["y"], pos)
         
         # Make pos the main coordinate instead of y
