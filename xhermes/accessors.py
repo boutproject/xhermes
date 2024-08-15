@@ -38,7 +38,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             else:
                 raise ValueError("Unrecognised units_type: " + units_type)
             
-    def extract_1d_tokamak_geometry(self, remove_outer = True):
+    def extract_1d_tokamak_geometry(self, remove_outer = False):
         """
         Process the results to generate 1D relevant geometry data:
         - Reconstruct pos, the cell position in [m] from upstream from dy
@@ -64,7 +64,13 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
 
         for i in range(1,n):
             pos[i] = pos[i-1] + 0.5*dy[i-1] + 0.5*dy[i]
-        pos -= (pos[1] + pos[2]) / 2     # Set 0 to be at first cell boundary in domain
+            
+        # Set 0 to be at first cell boundary in domain
+        if remove_outer is True:
+            pos -= (pos[2] + pos[3]) / 2     
+        else:
+            pos -= (pos[1] + pos[2]) / 2   
+        
 
         ds["pos"] = (["y"], pos)
         
@@ -74,7 +80,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
 
         # Get rid of outer guard cells as they aren't used
         # Solves issue when final dy is negative
-        if "outer_guards_removed" not in ds.metadata.keys():
+        if remove_outer is True and "outer_guards_removed" not in ds.metadata.keys():
             ds = ds.isel(pos = slice(1,-1))
             ds.metadata["outer_guards_removed"] = True
             
