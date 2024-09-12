@@ -38,7 +38,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             else:
                 raise ValueError("Unrecognised units_type: " + units_type)
             
-    def extract_1d_tokamak_geometry(self):
+    def extract_1d_tokamak_geometry(self, remove_outer = False):
         """
         Process the results to generate 1D relevant geometry data:
         - Reconstruct pos, the cell position in [m] from upstream from dy
@@ -59,23 +59,24 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         dy = ds.coords["dy"].values
         n = len(dy)
         pos = np.zeros(n)
-        pos[0] = -0.5*dy[1]
-        pos[1] = 0.5*dy[1]
+        pos[0] = 0.5*dy[0]
 
-        for i in range(2,n):
+        for i in range(1,n):
             pos[i] = pos[i-1] + 0.5*dy[i-1] + 0.5*dy[i]
-
-        # Guard replace to get position at boundaries
-        pos[-2] = (pos[-3] + pos[-2])/2
-        pos[1] = (pos[1] + pos[2])/2 
-
+            
         # Set 0 to be at first cell boundary in domain
-        pos = pos - pos[1]
+        if remove_outer is True:
+            pos -= (pos[2] + pos[3]) / 2     
+        else:
+            pos -= (pos[1] + pos[2]) / 2   
+        
+
         ds["pos"] = (["y"], pos)
         
         # Make pos the main coordinate instead of y
         ds = ds.swap_dims({"y":"pos"})
         ds.coords["pos"].attrs = ds.coords["y"].attrs
+    
 
         # Derive and append metadata for the cross-sectional area
         # and volume. The conversions are 1 because the derivation

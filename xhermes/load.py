@@ -36,6 +36,17 @@ def open_hermesdataset(
         info=info,
         **kwargs,
     )
+    
+    # Record if guard cells read in or not
+    if "keep_xboundaries" in kwargs:
+        ds.metadata["keep_xboundaries"] = kwargs[flag]
+    else:
+        ds.metadata["keep_xboundaries"] = True   # Default
+        
+    if "keep_yboundaries" in kwargs:
+        ds.metadata["keep_yboundaries"] = kwargs[flag]
+    else:
+        ds.metadata["keep_yboundaries"] = True   # Default
 
     # Normalisation
     meta = ds.attrs["metadata"]
