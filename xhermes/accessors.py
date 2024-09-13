@@ -76,6 +76,12 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         # Make pos the main coordinate instead of y
         ds = ds.swap_dims({"y":"pos"})
         ds.coords["pos"].attrs = ds.coords["y"].attrs
+        
+        ds["pos"].attrs.update({
+            "conversion" : 1,
+            "units" : "m",
+            "standard_name" : "parallel position",
+            "long_name" : "Parallel connection length"})
     
 
         # Derive and append metadata for the cross-sectional area
