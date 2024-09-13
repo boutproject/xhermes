@@ -1,5 +1,7 @@
 # xHermes
 
+xHermes is a post-processing package for Hermes-3 in 1D, 2D and 3D which provides automatic conversion to SI units and many useful plotting routines.
+
 xHermes a wrapper around [xBOUT](https://github.com/boutproject/xBOUT) to provide [Hermes-3](https://github.com/bendudson/hermes-3) specific 
 features. Both use [Xarray](https://docs.xarray.dev/en/stable/) which provides a scalable and powerful framework
 for dealing with large amounts of data while preserving dimensional 
@@ -11,6 +13,20 @@ powerful abilities to select, filter and operate on data. The
 syntax is similar to Pandas and the basics are explained in 
 Xarray's excellent documentation.
 If you are new to Xarray, it may be useful to start with reviewing the [selection syntax](https://docs.xarray.dev/en/stable/user-guide/indexing.html).
+
+## Installation 
+
+Hermes-3 is pip installable. In the terminal with your Python environment enabled, run:
+
+    pip install xhermes
+
+However, you may not be able to get the latest version this way. For now, it is highly recommended you do an editable install instead:
+
+    git clone https://github.com/boutproject/xhermes
+    cd xhermes
+    pip install -e .
+
+In this way, pip will install the Python package from the xHermes folder you cloned. If you use git to checkout branches or modify the contents in any way, it will be automatically work.
 
 ## Loading simulations
 
