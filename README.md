@@ -6,9 +6,13 @@ xHermes a wrapper around [xBOUT](https://github.com/boutproject/xBOUT) to provid
 features. At the moment, xHermes is used for loading in the Hermes-3 results, performing SI unit conversion and calculating some geometry terms.
 You may still want to use xBOUT, in particular if you are running 2D and 3D cases and want plotting routines for those.
 
+There is also a collection of Mike Kryjak's personal post-processing scripts [sdtools](https://github.com/mikekryjak/sdtools/tree/main/hermes3) which have extensive additional functionality for 1D and 2D postprocessing.
+These scripts are not officially supported, but feel free to take a look.
+It is intended for all those additional features to be merged into xHermes over time.
+
 Both xBOUT and xHermes use [Xarray](https://docs.xarray.dev/en/stable/) which provides a scalable and powerful framework
 for dealing with large amounts of data while preserving dimensional 
-consistency.
+consistency. If you have ever used [Pandas](https://pandas.pydata.org/), you will find Xarray very familiar, as it is effectively Pandas in more dimensions.
 
 While Xarray is based on Numpy arrays under the hood and the data 
 can be accessed in this way, Xarray's main benefit comes in its
