@@ -220,6 +220,53 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         
         return ds
 
+    def diagnose_phi_1d(self):
+        """
+        Function that diagnoses the electrostatic potential using the
+        variable Epar written by Hermes-3 at runtime.
+        """
+        # Ensure data is 1d in space
+        ds = self.data.squeeze()
+        print(ds.keys())
+        if "Epar" not in ds.keys():
+            raise Exception("Epar not in netcdf file")
+            return None
+        else:
+            # Extract Epar, y, t
+            Epar = ds["Epar"].values
+            ydim = ds["y"].values
+            time = ds["t"].values
+
+            # Create an array for Phi
+            Phi = Epar.copy()
+            Phi[:,:] = 0.0
+
+            # Get size of domains for loops
+            ny = len(ydim)
+            ntime = len(time)
+
+            # Do the integration in the y domain, for each time index
+            for it in range(0,ntime):
+                for iy in range(1,ny):
+                    Phi[it,iy] = Phi[it,iy-1] - 0.5*(Epar[it,iy-1]+Epar[it,iy])*(ydim[iy]-ydim[iy-1])
+ 
+            # MRH Need to add offset due to wall potential and sheath potential drop
+            # MRH DO SOMETHING
+
+            # Set the metadata for the potential
+            meta = ds.attrs["metadata"]
+            Tnorm = meta["Tnorm"]
+            Phi_attrs = {
+                        "units": "V", # MRH Probably need to set this based on units of Epar
+                        "conversion": Tnorm,
+                        "standard_name": "potential",
+                        "long_name": "Plasma potential",
+                        "source": "xhermes",
+                        }
+
+            # Assign the variable to the dataset
+            ds = ds.assign({"phi":(("t","y"),Phi,Phi_attrs)})
+            return ds
 
 @register_dataarray_accessor("hermes")
 class HermesDataArrayAccessor(BoutDataArrayAccessor):
