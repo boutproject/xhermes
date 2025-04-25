@@ -1,6 +1,7 @@
 import os
 from setuptools import setup, find_packages
 
+
 # Utility function to read the README file.
 # Used for the long_description.
 def read(fname):
@@ -18,7 +19,7 @@ setup(
         "Intended Audience :: Science/Research",
         "Intended Audience :: Education",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: Apache License",
+        "License :: OSI Approved :: Apache Software License",
         "Natural Language :: English",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3.6",
