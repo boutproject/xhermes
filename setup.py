@@ -14,6 +14,7 @@ setup(
     description="Analyse data from Hermes-3 simulations using xarray",
     license="Apache",
     long_description=read("README.md"),
+    long_description_content_type="text/markdown",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Science/Research",
