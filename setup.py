@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name="xhermes",
-    version="0.1",
+    version="0.1.0",
     description="Analyse data from Hermes-3 simulations using xarray",
     license="Apache",
     long_description=read("README.md"),
