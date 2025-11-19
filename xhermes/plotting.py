@@ -2,19 +2,20 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-def plot_rz_grid(mesh, ax = None, 
+def plot_rz_grid(ds, ax = None, 
                      xlim = (None,None), ylim = (None,None),
-                     linecolor = "k", linewidth = 0.3):
+                     plot_region_boundaries = True,
+                     title = "", linecolor = "grey", linewidth = 0.2):
     
     """
     Create a 2D polygon plot of a Hermes-3 grid
     
     Parameters
     ----------
-    mesh : dict-like
-        A dictionary-like object containing the mesh data. Must include keys for
-        the RZ coordinates of cell centres and corners.
-        Should work on both a loaded grid file or a Hermes-3 dataset.
+    ds : dict-like
+        Either a Hermes-3 results dataset or a HypnotoadGrid object. Needs to have
+        metadata with region boundaries, and Rxy, Zxy and their corner coordinates
+        as keys.
     ax : matplotlib.axes.Axes, optional
         The axes on which to plot. If None, a new figure and axes will be created
     xlim : tuple, optional
@@ -27,14 +28,15 @@ def plot_rz_grid(mesh, ax = None,
         Width of the grid lines. Default is 0.3.
     """
     
+    m = ds.metadata
     
     if ax == None:
         fig, ax = plt.subplots()
 
-    ax.set_title("R, Z space")
+    ax.set_title(title)
     
     
-    if "Rxy_lower_right_corners" in mesh.keys():
+    if "Rxy_lower_right_corners" in ds.keys():
         r_nodes = [
             "Rxy",
             "Rxy_corners",
@@ -50,10 +52,10 @@ def plot_rz_grid(mesh, ax = None,
             "Zxy_upper_right_corners",
         ]
         cell_r = np.concatenate(
-            [np.expand_dims(mesh[x], axis=2) for x in r_nodes], axis=2
+            [np.expand_dims(ds[x], axis=2) for x in r_nodes], axis=2
         )
         cell_z = np.concatenate(
-            [np.expand_dims(mesh[x], axis=2) for x in z_nodes], axis=2
+            [np.expand_dims(ds[x], axis=2) for x in z_nodes], axis=2
         )
     else:
         raise Exception("Cell corners not present in mesh, cannot do polygon plot")
@@ -78,12 +80,32 @@ def plot_rz_grid(mesh, ax = None,
             )
             patches.append(p)
             
-    cmap = mpl.colors.ListedColormap(["white"])
-    colors =np.zeros_like(cell_r).flatten()
+    # cmap = mpl.colors.ListedColormap(["white"])
+    cmap = mpl.colors.ListedColormap(["white", "red", "green", "blue", "purple", "red", "deeppink"])
+    norm = mpl.colors.BoundaryNorm(np.arange(-0.5, cmap.N + 0.5, 1), cmap.N)
+    
+    color_idx = np.zeros((Nx, Ny), dtype=int)
+    
+    if plot_region_boundaries:
+        color_idx[:, m["j1_1g"]] = 1
+        color_idx[:, m["j1_2g"]] = 2
+        color_idx[:, m["j2_1g"]] = 3
+        color_idx[:, m["j2_2g"]] = 4
+        color_idx[m["ixseps1"], :] = 5
+        color_idx[m["ixseps2"], :] = 6
+        
+        ax.plot(ds.Rxy[m["ixseps1"],:], ds.Zxy[m["ixseps1"],:], 
+                label = "ixseps1", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(5))
+        ax.plot(ds.Rxy[m["ixseps2"],:], ds.Zxy[m["ixseps2"],:], 
+                label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
+
+
+    colors_flat = color_idx.flatten()
+    
     polys = mpl.collections.PatchCollection(
         patches,
-        alpha=0.5,
-        # norm=norm,
+        alpha=1,
+        norm=norm,
         cmap=cmap,
         # fill = False,
         antialiaseds=True,
@@ -92,7 +114,7 @@ def plot_rz_grid(mesh, ax = None,
         joinstyle="bevel",
     )
 
-    polys.set_array(colors)
+    polys.set_array(colors_flat)
     ax.add_collection(polys)
     ax.set_aspect("equal", adjustable="box")
     ax.set_xlabel("R [m]")
