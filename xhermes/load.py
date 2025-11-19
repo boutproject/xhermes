@@ -1,6 +1,8 @@
 from xbout import open_boutdataset
 
 import os
+from netCDF4 import Dataset as ncDataset
+from xbout.region import _get_topology
 
 
 def open_hermesdataset(
@@ -423,3 +425,86 @@ def open(
         inputfilepath=os.path.join(path, "BOUT.settings"),
         **kwargs,
     )
+
+class HypnotoadGrid():
+    def __init__(self, gridfilepath):
+        """
+        Load a Hypnotoad grid file
+        
+        Parameters
+        ----------
+        gridfilepath : str
+            Path to the Hypnotoad grid file (netCDF)
+        """
+        
+        self._data = dict()       
+        with ncDataset(gridfilepath, 'r') as ds:
+            for name, var in ds.variables.items():
+                self._data[name] = var[:]
+                
+        # Add metadata for compatibility with Hermes-3 result dataset tools
+        self._add_metadata()
+                
+    def keys(self):
+        return self._data.keys()
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __getattr__(self, key):
+        # Only allow attribute-style access for real variables
+        if key in self._data:
+            return self._data[key]
+        raise AttributeError(f"'HypnotoadGrid' has no attribute '{key}'")
+
+    def __repr__(self):
+        return f"HypnotoadGrid({list(self._data.keys())})"
+                
+
+    def _add_metadata(self):
+        """
+        Adds key topology metadata to itself in order to add compatibility
+        to several tools meant for Hermes-3 result datasets which have
+        the ds.metadata attribute.
+        """
+        
+        m = {}
+        for param in [
+            "ixseps1", "ixseps2", 
+            "jyseps1_1", "jyseps2_1", "jyseps1_2", "jyseps2_2",
+            "nx", "ny", "ny_inner"
+            ]:
+            m[param] = self[param]
+            
+        m["MYG"] = self.y_boundary_guards.data
+        m["MXG"] = 2   # Hypnotoad grids always have X guards (?)
+        
+        # Put m back into the object temporarily to use xBOUT's topology detection
+        self.metadata = m
+        m["topology"] = _get_topology(self)
+        
+        # Continue adding metadata to "m" which will be put back in later        
+        if "single-null" in m["topology"]:
+            m["targets"] = ["inner_lower", "outer_lower"]
+        elif "double-null" in m["topology"]:
+            m["targets"] = ["inner_lower", "outer_lower", "inner_upper", "outer_upper"]
+        else:
+            raise ValueError("Currently unsupported topology")
+        
+        num_targets = len(m["targets"])
+        
+        # Now calculate versions of nx, ny which BOTH always include guard
+        # cells if they are present, or don't if they do not
+        m["nxg"] = m["nx"]
+        
+        if["MYG"] == 0:
+            m["nyg"] = m["ny"]    # Already doesn't include guard cells
+        else:
+            m["nyg"] = m["ny"] + m["MYG"] * num_targets   # ny taking guards into account
+        
+        # Calculate versions of region boundaries which always refer to the same
+        # locations in the grid, regardless of whether guard cells are present
+        m["j1_1g"] = m["jyseps1_1"] + m["MYG"]
+        m["j1_2g"] = m["jyseps1_2"] + m["MYG"] * (num_targets - 1)
+        m["j2_1g"] = m["jyseps2_1"] + m["MYG"]
+        m["j2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
