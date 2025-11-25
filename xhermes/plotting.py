@@ -137,8 +137,9 @@ def plot_rz_grid(ds,
             color_idx[:, m["j2_1g"]] = 3
             color_idx[:, m["j2_2g"]] = 4
             color_idx[:, m["ny_inner"]] = 5
-            color_idx[m["ixseps1"], :] = 5
-            color_idx[m["ixseps2"], :] = 6
+            color_idx[m["ixseps1"], :] = 6
+            if m["topology"] != "single-null":
+                color_idx[m["ixseps2"], :] = 7
             
             if selection != None:
                 color_idx[selection] = 8
@@ -148,8 +149,10 @@ def plot_rz_grid(ds,
             
             ax.plot(ds[Rname][m["ixseps1"],:], ds[Zname][m["ixseps1"],:], 
                     label = "ixseps1", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(5))
-            ax.plot(ds[Rname][m["ixseps2"],:], ds[Zname][m["ixseps2"],:], 
-                    label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
+            
+            if m["topology"] != "single-null":
+                ax.plot(ds[Rname][m["ixseps2"],:], ds[Zname][m["ixseps2"],:], 
+                        label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
 
         colors_flat = color_idx.flatten()
         
@@ -188,7 +191,8 @@ def plot_rz_grid(ds,
         color[:, m["j2_2g"]] = 4
         color[:, m["ny_inner"]] = 5
         color[m["ixseps1"], :] = 6
-        color[m["ixseps2"], :] = 7
+        if m["topology"] != "single-null":
+            color[m["ixseps2"], :] = 7
         
         if selection != None:
             color[selection] = 8
