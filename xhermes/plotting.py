@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-def plot_selection(ds, selection):
+def plot_selection(ds, selection, dpi = 150):
     """
     Visualises selected grid region over a logical and poloidal grid plot
     
@@ -16,7 +16,7 @@ def plot_selection(ds, selection):
         selectors, compatible with NumPy 2D indexing.
     """
     
-    fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = 150)
+    fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
 
     plot_rz_grid(ds, mode = "logical", selection = selection, ax = axes[0])
     plot_rz_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
@@ -68,7 +68,7 @@ def plot_rz_grid(ds,
 
     ax.set_title(title)
     
-    cmap = mpl.colors.ListedColormap(["white", "coral", "limegreen", "skyblue", "violet", "navy", "darkslategrey", "darkslategrey", "deeppink"])
+    cmap = mpl.colors.ListedColormap(["white", "coral", "limegreen", "skyblue", "violet", "navy", "grey", "darkslategrey", "deeppink"])
     norm = mpl.colors.BoundaryNorm(np.arange(-0.5, cmap.N + 0.5, 1), cmap.N)
     
     # Handle different naming conventions in grid and xBOUT dataset
