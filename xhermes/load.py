@@ -442,6 +442,10 @@ class HypnotoadGrid():
             for name, var in ds.variables.items():
                 self._data[name] = var[:]
                 
+        # Reproduce xBOUT variable name changes
+        self._data["Rxy_lower_left_corners"] = self._data.pop("Rxy_corners")
+        self._data["Zxy_lower_left_corners"] = self._data.pop("Zxy_corners")
+        
         # Add metadata for compatibility with Hermes-3 result dataset tools
         self._add_metadata()
                 
