@@ -478,7 +478,7 @@ class HypnotoadGrid():
             "jyseps1_1", "jyseps2_1", "jyseps1_2", "jyseps2_2",
             "nx", "ny", "ny_inner"
             ]:
-            m[param] = self[param]
+            m[param] = int(self[param].data)
             
         m["MYG"] = self.y_boundary_guards.data
         m["MXG"] = 2   # Hypnotoad grids always have X guards (?)
