@@ -24,6 +24,7 @@ def plot_selection(ds, selection, dpi = 150):
     axes[1].set_title("Poloidal grid")
     fig.tight_layout()
     plt.show()
+    
 
 def plot_rz_grid(ds, 
                 selection = None,
@@ -64,6 +65,7 @@ def plot_rz_grid(ds,
     if ax == None:
         fig, ax = plt.subplots()
         
+    # Marker size for selection plot
     ms_selection = 3
 
     ax.set_title(title)
@@ -110,8 +112,6 @@ def plot_rz_grid(ds,
         Ny = len(cell_r[0])
         patches = []
 
-        # https://matplotlib.org/2.0.2/examples/api/patch_collection.html
-
         idx = [np.array([1, 2, 4, 3, 1])]
         patches = []
         for i in range(Nx):
@@ -126,9 +126,7 @@ def plot_rz_grid(ds,
                 )
                 patches.append(p)
             
-    # cmap = mpl.colors.ListedColormap(["white"])
-    
-    
+
         color_idx = np.zeros((Nx, Ny), dtype=int)
     
         if plot_region_boundaries:
@@ -141,6 +139,7 @@ def plot_rz_grid(ds,
             if m["topology"] != "single-null":
                 color_idx[m["ixseps2"], :] = 7
             
+            # Plot selection
             if selection != None:
                 color_idx[selection] = 8
                 ax.plot(ds[Rname][selection], ds[Zname][selection], 
@@ -161,7 +160,6 @@ def plot_rz_grid(ds,
             alpha=1,
             norm=norm,
             cmap=cmap,
-            # fill = False,
             antialiaseds=True,
             edgecolors=linecolor,
             linewidths=linewidth,
@@ -199,8 +197,6 @@ def plot_rz_grid(ds,
             ax.plot(Y[selection], X[selection], 
                         label = "selection", lw = 0, alpha = 1, ms = ms_selection, marker = "o", c = cmap(8), 
                         markeredgecolor = "yellow", zorder = 100)
-        
-
             
         ax.pcolormesh(Y, X, color, cmap = cmap, norm = norm, linewidth = 0.1, antialiased = True, color = "k")
 
