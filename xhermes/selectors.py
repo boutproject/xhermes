@@ -1,6 +1,22 @@
 import numpy as np
 
 def select_poloidal(ds, name):
+    """
+    Selects indices for requested poloidal regions.
+    
+    Parameters
+    ----------
+    ds : Dataset
+        Either HypnotoadGrid or xBOUT/xHermes dataset.
+    name : str
+        Identifier of the poloidal region to select.
+
+    Returns
+    -------
+    int or slice
+        integer index or slice describing the required poloidal indices.
+    """
+    
     
     m = ds.metadata
     # TODO: use j1_1g etc from xBOUT once it's implemented there
@@ -15,20 +31,73 @@ def select_poloidal(ds, name):
     ny_inner = m["ny_inner"]
     topology = m["topology"]
     
+    # Inverse of MYG needed for some double null indexing
+    if MYG == 0:
+        MYG_inverse = 2
+    else:
+        MYG_inverse = 0
+    
     index = {}
     
+    # Target selection
     if "single-null" in topology:
         if any([x in name for x in ["inner_lower", "inner_upper", "outer_lower", "outer_upper"]]):
             raise ValueError(f"{name} region not present in {topology}")
         
-        # if 
-        # index["inner_target"] = MYG
-        # index["outer_target"] = nyg - MYG
+    if "single-null" in topology:
+        if "lower" in topology:
+            index["inner_target"] = MYG
+            index["outer_target"] = nyg - MYG - 1
+        else:
+            index["inner_target"] = nyg - MYG - 1
+            index["outer_target"] = MYG
+            
+    elif "double-null" in topology:
+        index["inner_lower_target"] = MYG
+        index["outer_lower_target"] = nyg - MYG - 1
+        index["inner_upper_target"] = ny_inner - MYG_inverse + 1
+        index["outer_upper_target"] = ny_inner + MYG * 3
+
+    # Guard selection
+    if MYG > 0:
+        if "single-null" in topology:
+            index["yguards"] = np.r_[
+                slice(None,MYG),
+                slice(nyg-MYG, nyg)
+            ]
+        
+        else:
+            index["yguards"] = np.r_[
+                slice(None,MYG),
+                slice(ny_inner+MYG, ny_inner + MYG*2),
+                slice(ny_inner+MYG*2, ny_inner + MYG*3),
+                slice(nyg-MYG, nyg)
+            ]
+           
+    else:
+        raise ValueError("Cannot select guards - no guards found in domain!")
+        
     
     return index[name]
     
 
 def select_region(ds, name):
+    """Select pre-defined regions within a dataset.
+    
+    Parameters
+    ----------
+    ds : xarray.Dataset-like
+        Either HypnotoadGrid or xBOUT/xHermes dataset.
+    name : str
+        Name of the region to select (e.g., "inner_target", "yguards").
+        
+    Returns
+    -------
+    tuple
+        Tuple of slices defining the requested region within the dataset.
+    
+    """
+
     
     m = ds.metadata
     # TODO: use j1_1g etc from xBOUT once it's implemented there
@@ -51,22 +120,12 @@ def select_region(ds, name):
             slice(None, None),
         )
     
-    if "single-null" in topology:
+    # Poloidal selections
+    if name in ["inner_target", "outer_target",
+                "inner_lower_target", "inner_upper_target",
+                "outer_lower_target", "outer_upper_target",
+                "yguards"]:
         
-        slices["inner_target_guards"] = ()
+        slices[name] = (slice(None), select_poloidal(ds, name))
     
     return slices[name]
-
-    slices["inner_lower_target_guards"] = (target_xslice, slice(0, MYG))
-    slices["inner_upper_target_guards"] = (
-        target_xslice,
-        slice(ny_inner + MYG, ny_inner + MYG * 2),
-    )
-    slices["outer_upper_target_guards"] = (
-        target_xslice,
-        slice(ny_inner + MYG * 2, ny_inner + MYG * 3),
-    )
-    slices["outer_lower_target_guards"] = (
-        target_xslice,
-        slice(nyg - MYG, nyg),
-    )
