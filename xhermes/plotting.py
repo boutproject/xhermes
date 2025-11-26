@@ -60,6 +60,11 @@ def plot_rz_grid(ds,
         Width of the grid lines. Default is 0.3.
     """
     
+    # If reading a results dataset with time, select last time slice
+    if hasattr(ds, "coords"):
+        if "t" in ds.sizes:
+            ds = ds.isel(t=-1)
+    
     m = ds.metadata
     
     if ax == None:
