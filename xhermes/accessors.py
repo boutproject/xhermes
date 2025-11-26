@@ -141,11 +141,11 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         # TODO: get rid of the below once xBOUT differentiates 
         # between USN and LSN
         if "single-null" in m["topology"]:
-            print("YES")
-            if m["jyseps1_1"] < m["jyseps2_2"]:
+  
+            if ds["Rxy"][0, m["jyseps1_1"]] < ds["Rxy"][0, m["jyseps2_2"]]:
                 m["topology"] = "lower-single-null"
             
-            if m["jyseps1_1"] > m["jyseps2_2"]:
+            if ds["Rxy"][0, m["jyseps1_1"]] > ds["Rxy"][0, m["jyseps2_2"]]:
                 m["topology"] = "upper-single-null"
         
         # Add theta index to coords so that both X and theta can be accessed index-wise

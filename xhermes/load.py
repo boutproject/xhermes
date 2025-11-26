@@ -491,11 +491,13 @@ class HypnotoadGrid():
         # TODO: get rid of the below once xBOUT differentiates 
         # between USN and LSN
         if "single-null" in m["topology"]:
-            print("YES")
-            if m["jyseps1_1"] < m["jyseps2_2"]:
+
+            print(m["jyseps1_1"], m["jyseps2_2"])
+            
+            if self["Rxy"][0, m["jyseps1_1"]] < self["Rxy"][0, m["jyseps2_2"]]:
                 m["topology"] = "lower-single-null"
             
-            if m["jyseps1_1"] > m["jyseps2_2"]:
+            if self["Rxy"][0, m["jyseps1_1"]] > self["Rxy"][0, m["jyseps2_2"]]:
                 m["topology"] = "upper-single-null"
         
         # Continue adding metadata to "m" which will be put back in later        
