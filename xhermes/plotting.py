@@ -90,7 +90,10 @@ def plot_rz_grid(ds,
         raise Exception("RZ coordinates not found in dataset")
     
     if mode == "poloidal":
-        if "Rxy_lower_right_corners" in ds.keys():
+        if "Rxy_lower_right_corners" not in ds.keys():
+            raise Exception("Cell corners not present in mesh, cannot do polygon plot")
+    
+        else:
             r_nodes = [
                 Rname,
                 "Rxy_lower_left_corners",
@@ -111,8 +114,6 @@ def plot_rz_grid(ds,
             cell_z = np.concatenate(
                 [np.expand_dims(ds[x], axis=2) for x in z_nodes], axis=2
             )
-        else:
-            raise Exception("Cell corners not present in mesh, cannot do polygon plot")
 
         Nx = len(cell_r)
         Ny = len(cell_r[0])
