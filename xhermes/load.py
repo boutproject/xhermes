@@ -492,7 +492,6 @@ class HypnotoadGrid():
         # between USN and LSN
         if "single-null" in m["topology"]:
 
-            print(m["jyseps1_1"], m["jyseps2_2"])
             
             if self["Rxy"][0, m["jyseps1_1"]] < self["Rxy"][0, m["jyseps2_2"]]:
                 m["topology"] = "lower-single-null"
