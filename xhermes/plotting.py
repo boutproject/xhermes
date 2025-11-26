@@ -230,3 +230,5 @@ def plot_rz_grid(ds,
         ax.set_xlim(xlim)
     if ylim != (None,None):
         ax.set_ylim(ylim)
+        
+    return ax
