@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-def plot_selection(ds, selection, dpi = 150):
+def plot_selection(ds, selection, dpi = 150, title = ""):
     """
     Visualises selected grid region over a logical and poloidal grid plot
     
@@ -23,6 +23,7 @@ def plot_selection(ds, selection, dpi = 150):
     axes[0].set_title("Logical grid")
     axes[1].set_title("Poloidal grid")
     fig.tight_layout()
+    fig.suptitle(title, y = 1.03)
     plt.show()
     
 
@@ -178,7 +179,6 @@ def plot_rz_grid(ds,
         x = np.array(range(m["nxg"]))
         y = range(m["nyg"])
         
-        print(y)
 
         X, Y = np.meshgrid(y, x)
         color = np.zeros_like(X)
