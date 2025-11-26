@@ -138,6 +138,16 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             raise Exception(
                 "2D Tokamak topology missing from metadata. Please load model with the flag geometry = 'toroidal' and provide grid")
         
+        # TODO: get rid of the below once xBOUT differentiates 
+        # between USN and LSN
+        if "single-null" in m["topology"]:
+            print("YES")
+            if m["jyseps1_1"] < m["jyseps2_2"]:
+                m["topology"] = "lower-single-null"
+            
+            if m["jyseps1_1"] > m["jyseps2_2"]:
+                m["topology"] = "upper-single-null"
+        
         # Add theta index to coords so that both X and theta can be accessed index-wise
         # It is surprisingly hard to extract the index of coordinates in Xarray...
         ds.coords["theta_idx"] = (["theta"], range(len(ds.coords["theta"])))
@@ -166,6 +176,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             m["nyg"] = m["ny"] + m["MYG"] * num_targets   
         
         # Simplified names of the separatrix indices          
+        # TODO: remove once available in xBOUT
         m["j1_1"] = m["jyseps1_1"]
         m["j1_2"] = m["jyseps1_2"]
         m["j2_1"] = m["jyseps2_1"]

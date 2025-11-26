@@ -136,7 +136,7 @@ def plot_rz_grid(ds,
             color_idx[:, m["j2_2g"]] = 4
             color_idx[:, m["ny_inner"]] = 5
             color_idx[m["ixseps1"], :] = 6
-            if m["topology"] != "single-null":
+            if "single-null" not in m["topology"]:
                 color_idx[m["ixseps2"], :] = 7
             
             # Plot selection
@@ -149,7 +149,7 @@ def plot_rz_grid(ds,
             ax.plot(ds[Rname][m["ixseps1"],:], ds[Zname][m["ixseps1"],:], 
                     label = "ixseps1", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(5))
             
-            if m["topology"] != "single-null":
+            if "single-null" not in m["topology"]:
                 ax.plot(ds[Rname][m["ixseps2"],:], ds[Zname][m["ixseps2"],:], 
                         label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
 
@@ -189,7 +189,7 @@ def plot_rz_grid(ds,
         color[:, m["j2_2g"]] = 4
         color[:, m["ny_inner"]] = 5
         color[m["ixseps1"], :] = 6
-        if m["topology"] != "single-null":
+        if "single-null" not in m["topology"]:
             color[m["ixseps2"], :] = 7
         
         if selection != None:

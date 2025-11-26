@@ -485,7 +485,18 @@ class HypnotoadGrid():
         
         # Put m back into the object temporarily to use xBOUT's topology detection
         self.metadata = m
+        
         m["topology"] = _get_topology(self)
+        
+        # TODO: get rid of the below once xBOUT differentiates 
+        # between USN and LSN
+        if "single-null" in m["topology"]:
+            print("YES")
+            if m["jyseps1_1"] < m["jyseps2_2"]:
+                m["topology"] = "lower-single-null"
+            
+            if m["jyseps1_1"] > m["jyseps2_2"]:
+                m["topology"] = "upper-single-null"
         
         # Continue adding metadata to "m" which will be put back in later        
         if "single-null" in m["topology"]:
