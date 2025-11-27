@@ -137,11 +137,11 @@ def plot_rz_grid(ds,
         color_idx = np.zeros((Nx, Ny), dtype=int)
     
         if plot_region_boundaries:
-            color_idx[:, m["j1_1g"]] = 1
-            color_idx[:, m["j1_2g"]] = 2
-            color_idx[:, m["j2_1g"]] = 3
-            color_idx[:, m["j2_2g"]] = 4
-            color_idx[:, m["ny_inner"]] = 5
+            color_idx[:, m["jyseps1_1g"]] = 1
+            color_idx[:, m["jyseps1_2g"]] = 2
+            color_idx[:, m["jyseps2_1g"]] = 3
+            color_idx[:, m["jyseps2_2g"]] = 4
+            color_idx[:, m["ny_innerg"]] = 5
             color_idx[m["ixseps1"], :] = 6
             if "single-null" not in m["topology"]:
                 color_idx[m["ixseps2"], :] = 7
@@ -189,11 +189,11 @@ def plot_rz_grid(ds,
         X, Y = np.meshgrid(y, x)
         color = np.zeros_like(X)
         
-        color[:, m["j1_1g"]] = 1
-        color[:, m["j1_2g"]] = 2
-        color[:, m["j2_1g"]] = 3
-        color[:, m["j2_2g"]] = 4
-        color[:, m["ny_inner"]] = 5
+        color[:, m["jyseps1_1g"]] = 1
+        color[:, m["jyseps1_2g"]] = 2
+        color[:, m["jyseps2_1g"]] = 3
+        color[:, m["jyseps2_2g"]] = 4
+        color[:, m["ny_innerg"]] = 5
         color[m["ixseps1"], :] = 6
         if "single-null" not in m["topology"]:
             color[m["ixseps2"], :] = 7
@@ -211,11 +211,11 @@ def plot_rz_grid(ds,
         
 
     legend_handles = [
-        mpl.lines.Line2D([0], [0], label = "j1_1g", color = cmap(1)),
-        mpl.lines.Line2D([0], [0], label = "j1_2g", color = cmap(2)),
-        mpl.lines.Line2D([0], [0], label = "j2_1g", color = cmap(3)),
-        mpl.lines.Line2D([0], [0], label = "j2_2g", color = cmap(4)),
-        mpl.lines.Line2D([0], [0], label = "ny_inner", color = cmap(5)),
+        mpl.lines.Line2D([0], [0], label = "jyseps1_1g", color = cmap(1)),
+        mpl.lines.Line2D([0], [0], label = "jyseps1_2g", color = cmap(2)),
+        mpl.lines.Line2D([0], [0], label = "jyseps2_1g", color = cmap(3)),
+        mpl.lines.Line2D([0], [0], label = "jyseps2_2g", color = cmap(4)),
+        mpl.lines.Line2D([0], [0], label = "ny_innerg", color = cmap(5)),
         mpl.lines.Line2D([0], [0], label = "ixseps1", color = cmap(6)),
         mpl.lines.Line2D([0], [0], label = "ixseps2", color = cmap(7)),
         mpl.lines.Line2D([0], [0], label = "Selection", color = cmap(8), marker = "o", markeredgecolor = "yellow"),
@@ -231,3 +231,5 @@ def plot_rz_grid(ds,
         ax.set_xlim(xlim)
     if ylim != (None,None):
         ax.set_ylim(ylim)
+        
+    return ax
