@@ -256,6 +256,23 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
     def __init__(self, da):
         super().__init__(da)
         
+    def clean_guards(self):
+        """
+        Set guard cell values to np.nan
+        """
+        
+        # Clear radial guards
+        xguards = slice_2d(self.data, "xguards")
+        ds = self.data.copy()
+        ds[{"x": xguards[0], "theta": xguards[1]}] = np.nan
+        
+        # Clear target guards if they exist
+        if self.data.metadata["MYG"] > 0:
+            yguards = slice_2d(self.data, f"yguards")
+            ds[{"x": yguards[0], "theta": yguards[1]}] = np.nan
+            
+        return ds
+        
     def select_region(self, name):
         """
         Select a radial/poloidal region from the DataArray
