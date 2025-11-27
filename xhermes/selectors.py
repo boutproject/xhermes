@@ -1,6 +1,6 @@
 import numpy as np
 
-def select_poloidal(ds, name):
+def poloidal_selector(ds, name):
     """
     Selects indices for requested poloidal regions.
     
@@ -81,7 +81,7 @@ def select_poloidal(ds, name):
     return index[name]
     
 
-def select_region(ds, name):
+def region_selector(ds, name):
     """Select pre-defined regions within a dataset.
     
     Parameters
@@ -126,6 +126,6 @@ def select_region(ds, name):
                 "outer_lower_target", "outer_upper_target",
                 "yguards"]:
         
-        slices[name] = (slice(None), select_poloidal(ds, name))
+        slices[name] = (slice(None), poloidal_selector(ds, name))
     
     return slices[name]

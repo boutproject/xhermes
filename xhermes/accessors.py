@@ -1,7 +1,7 @@
 import numpy as np
 from xarray import register_dataset_accessor, register_dataarray_accessor
 from xbout import BoutDatasetAccessor, BoutDataArrayAccessor
-from xhermes.selectors import select_poloidal, select_region
+from xhermes.selectors import region_selector
 
 
 @register_dataset_accessor("hermes")
@@ -13,17 +13,13 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
     def __init__(self, ds):
         super().__init__(ds)
         
-    def select_poloidal(self, name):
-        """
-        Return poloidal selection indices for a given region name
-        """
-        return select_poloidal(self.data, name)
     
     def select_region(self, name):
         """
         Return 2D region selection index tuple for a given region name
         """
-        return select_region(self.data, name)
+        selection = region_selector(self.data, name)
+        return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
         """
