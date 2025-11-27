@@ -1,7 +1,7 @@
 import numpy as np
 from xarray import register_dataset_accessor, register_dataarray_accessor
 from xbout import BoutDatasetAccessor, BoutDataArrayAccessor
-from xhermes.selectors import region_selector
+from .selectors import slice_2d
 
 
 @register_dataset_accessor("hermes")
@@ -18,7 +18,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         """
         Return 2D region selection index tuple for a given region name
         """
-        selection = region_selector(self.data, name)
+        selection = slice_2d(self.data, name)
         return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
