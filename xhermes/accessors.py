@@ -16,7 +16,17 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
     
     def select_region(self, name):
         """
-        Return 2D region selection index tuple for a given region name
+        Select a radial/poloidal region from the dataset
+        
+        Parameters
+        ----------
+        name : str
+            Region name to select. Must be compatible with `slice_2d`.
+        
+        Returns
+        -------
+        xarray.Dataset
+            Dataset with data selected for the specified region
         """
         selection = slice_2d(self.data, name)
         return self.data.isel(x=selection[0], theta=selection[1])
@@ -245,6 +255,23 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
 
     def __init__(self, da):
         super().__init__(da)
+        
+    def select_region(self, name):
+        """
+        Select a radial/poloidal region from the DataArray
+        
+        Parameters
+        ----------
+        name : str
+            Region name to select. Must be compatible with `slice_2d`.
+        
+        Returns
+        -------
+        xarray.DataArray
+            DataArray with data selected for the specified region
+        """
+        selection = slice_2d(self.data, name)
+        return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
         """
