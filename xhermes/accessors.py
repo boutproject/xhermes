@@ -111,7 +111,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ----------
         - nxg and nyg, versions of ny and nx which always include guard cells 
           if they exist in the dataset, and do not include them if they don't
-        - j1_1g, j1_2g, ..., versions of jyseps which account for guards in the 
+        - jyseps1_1g, jyseps1_2g, ..., versions of jyseps which account for guards in the 
           same way as nxg and nyg
         - x_idx, y_idx: arrays of radial and poloidal indices of all cells
         - dv, dr, dthe, dl: cell volume and real space cell dimensions
@@ -165,17 +165,14 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         else:
             m["nyg"] = m["ny"] + m["MYG"] * num_targets   
         
-        # Simplified names of the separatrix indices          
-        m["j1_1"] = m["jyseps1_1"]
-        m["j1_2"] = m["jyseps1_2"]
-        m["j2_1"] = m["jyseps2_1"]
-        m["j2_2"] = m["jyseps2_2"]
         
         # Separatrix indices which account for guard cells in the same way as nxg, nyg
-        m["j1_1g"] = m["j1_1"] + m["MYG"]
-        m["j1_2g"] = m["j1_2"] + m["MYG"] * (num_targets - 1)
-        m["j2_1g"] = m["j2_1"] + m["MYG"]
-        m["j2_2g"] = m["j2_2"] + m["MYG"] * (num_targets - 1)
+        # TODO: switch these over to xBOUT once available
+        m["jyseps1_1g"] = m["jyseps1_1"] + m["MYG"]
+        m["jyseps1_2g"] = m["jyseps1_2"] + m["MYG"] * (num_targets - 1)
+        m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
+        m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
+        m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
             
         # Array of radial (x) indices and of poloidal (y) indices for each cell
         # This is useful because Xarray makes it awkward to extract indices in certain cases

@@ -508,7 +508,9 @@ class HypnotoadGrid():
         
         # Calculate versions of region boundaries which always refer to the same
         # locations in the grid, regardless of whether guard cells are present
-        m["j1_1g"] = m["jyseps1_1"] + m["MYG"]
-        m["j1_2g"] = m["jyseps1_2"] + m["MYG"] * (num_targets - 1)
-        m["j2_1g"] = m["jyseps2_1"] + m["MYG"]
-        m["j2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
+        # TODO: switch these over to xBOUT once available
+        m["jyseps1_1g"] = m["jyseps1_1"] + m["MYG"]
+        m["jyseps1_2g"] = m["jyseps1_2"] + m["MYG"] * (num_targets - 1)
+        m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
+        m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
+        m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
