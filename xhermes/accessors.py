@@ -256,7 +256,7 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
     def __init__(self, da):
         super().__init__(da)
         
-    def clean_guards(self):
+    def clear_guards(self):
         """
         Set guard cell values to np.nan
         """
