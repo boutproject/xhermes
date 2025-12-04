@@ -111,6 +111,11 @@ def slice_2d(ds, name):
     ny_innerg = m["ny_innerg"]
     topology = m["topology"]
     
+    polidx = lambda x: slice_poloidal(ds, x)
+    slice_x_domain = slice(MXG, nxg - MXG)  # Domain X points (excl guards)
+    slice_x_outer =  nxg - MXG - 1  # Last domain cell on SOL edge side
+    slice_x_inner = MXG
+    
     
     slices = {}
     
@@ -118,6 +123,81 @@ def slice_2d(ds, name):
             np.r_[slice(0, MXG), slice(nxg - MXG, nxg)],
             slice(None, None),
         )
+    
+    ## Single null
+    if "single" in topology:
+        
+        slices["targets"] = (slice_x_domain,
+                             np.r_[polidx("inner_target"), 
+                                   polidx("outer_target")])
+        
+        slices["core_boundary"] = (slice_x_inner,
+                                   slice(j1_1g+1, j2_2g+1))
+        
+        ## Lower single null
+        if "lower" in topology:
+            slices["sol_boundary"] = (
+                slice_x_outer,
+                slice(polidx("inner_target"), polidx("outer_target"))
+                )
+            slices["pfr_boundary"] = (
+                slice_x_inner,
+                np.r_[
+                    slice(MYG, j1_1g+1),
+                    slice(j2_2g+1, nyg - MYG)
+                ]
+            )
+            
+        ## Upper single null
+        elif "upper" in topology:
+            slices["sol_boundary"] = (
+                slice_x_outer,
+                slice(polidx("outer_target"), polidx("inner_target"))
+                )
+            slices["pfr_boundary"] = (
+                slice_x_inner,
+                np.r_[
+                    slice(MYG, j1_1g+1),
+                    slice(j2_2g+1, nyg - MYG)
+                ]
+            )
+        else:
+            raise ValueError("Single null topology must be either upper or lower.")
+        
+    ## Double null
+    elif "double" in topology:
+        
+        slices["targets"] = (slice_x_domain, 
+                             np.r_[
+                                polidx("inner_lower_target"), 
+                                polidx("inner_upper_target"),
+                                polidx("outer_upper_target"),
+                                polidx("outer_lower_target"),
+                                ])
+        
+        slices["sol_boundary"] = (
+            slice_x_outer,
+            np.r_[
+                slice(polidx("inner_lower_target"), polidx("inner_upper_target")+1),
+                slice(polidx("outer_upper_target"), polidx("outer_lower_target")+1),
+            ])
+        
+        slices["core_boundary"] = (slice_x_inner,
+                                   np.r_[
+                                       slice(j1_1g+1, j2_1g+1),
+                                       slice(j1_2g+1, j2_2g+1)]
+                                   )
+        
+        slices["pfr_boundary"] = (slice_x_inner,
+                                   np.r_[
+                                       slice(MYG, j1_1g+1),
+                                       slice(j2_1g+1, ny_innerg-MYG*2),
+                                       slice(ny_innerg, j1_2g+1),
+                                       slice(j2_2g+1, nyg-MYG)]
+                                   )
+        
+    else:
+        raise ValueError(f"Unknown topology: {topology}")
     
     # Poloidal selections
     if name in ["inner_target", "outer_target",
