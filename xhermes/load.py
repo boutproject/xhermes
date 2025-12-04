@@ -617,17 +617,14 @@ class HypnotoadGrid():
             List of valid processor counts
         """
         valid_procs = []
-        for i in range(1,max_procs):
+        for i in range(1,max_procs+1):
             result = self.check_decomposition(nxpe, i)
+            
+            if verbose:
+                print(f"Checking {i} cores:   {result[1]}")
             if result[0]:
                 valid_procs.append(i)
                 
-        if verbose:
-            if len(valid_procs) == 0:
-                print(f"No valid processor count for nxpe={nxpe} and max_procs={max_procs}")
-            else:
-                print(f"Valid nprocs for nxpe={nxpe} and max_procs={max_procs}:", valid_procs)
-            
         return valid_procs
 
     
