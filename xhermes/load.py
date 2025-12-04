@@ -5,7 +5,7 @@ import copy
 import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
-from . import slice_poloidal
+from .selectors import slice_poloidal
 
 
 def open_hermesdataset(
