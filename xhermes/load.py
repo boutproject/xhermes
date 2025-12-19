@@ -1,8 +1,11 @@
 from xbout import open_boutdataset
 
 import os
+import copy
+import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
+from .selectors import slice_poloidal
 
 
 def open_hermesdataset(
@@ -454,6 +457,9 @@ class HypnotoadGrid():
 
     def __getitem__(self, key):
         return self._data[key]
+    
+    def __setitem__(self, key, value):
+        self._data[key] = value
 
     def __getattr__(self, key):
         # Only allow attribute-style access for real variables
@@ -463,6 +469,24 @@ class HypnotoadGrid():
 
     def __repr__(self):
         return f"HypnotoadGrid({list(self._data.keys())})"
+    
+    def copy(self):
+        new = object.__new__(HypnotoadGrid)  # Bypass __init__
+        new._data = {}
+
+        for key, item in self._data.items():
+            
+            # No need to copy strings, ints, floats
+            if isinstance(item, (str, int, float)):
+                new._data[key] = item
+                
+            # Dicts, arrays, etc need copying
+            else:
+                new._data[key] = item.copy()
+
+        new.metadata = self.metadata.copy()
+        
+        return new
                 
 
     def _add_metadata(self):
@@ -485,7 +509,19 @@ class HypnotoadGrid():
         
         # Put m back into the object temporarily to use xBOUT's topology detection
         self.metadata = m
+        
         m["topology"] = _get_topology(self)
+        
+        # TODO: get rid of the below once xBOUT differentiates 
+        # between USN and LSN
+        if "single-null" in m["topology"]:
+
+            
+            if self["Rxy"][0, m["jyseps1_1"]] < self["Rxy"][0, m["jyseps2_2"]]:
+                m["topology"] = "lower-single-null"
+            
+            if self["Rxy"][0, m["jyseps1_1"]] > self["Rxy"][0, m["jyseps2_2"]]:
+                m["topology"] = "upper-single-null"
         
         # Continue adding metadata to "m" which will be put back in later        
         if "single-null" in m["topology"]:
@@ -514,6 +550,52 @@ class HypnotoadGrid():
         m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
+        
+    def remove_guards(self):
+        """
+        Removes radial and poloidal guard cells from Hypnotoad grid.
+        Also sets MXG, MYG and y_boundary_guards metadata to zero.
+        Will raise exception if MXG or MYG are already zero. 
+        
+        Returns
+        -------
+        new : HypnotoadGrid
+            New HypnotoadGrid object with guard cells removed
+        """
+        new = self.copy()
+        m = self.metadata
+        
+        if m["MXG"] == 0 or m["MYG"] == 0:
+            raise Exception("")
+        
+        for key in new.keys():
+            item = new[key]
+            
+            if type(item) == np.ma.core.MaskedArray:
+                if item.shape != ():
+                    
+                    # If 2D array, remove radial and poloidal guards
+                    if len(item.shape) == 2:
+                        item = item[slice(2,-2), slice(None)]
+                        item = np.delete(item, slice_poloidal(new, "yguards"), axis = 1)
+                        
+                    # If 1D array matching radial size, remove radial guards
+                    if len(item.shape) == 1 and item.shape[0] == new["nx"]:
+                        item = item[slice(2,-2)]
+                    
+                    # If 1D array matching poloidal size, remove poloidal guards
+                    if len(item.shape) == 1 and item.shape[0] == new["ny"]:
+                        item = np.delete(item, slice_poloidal(new, "yguards"))
+                        
+                    new[key] = item
+                    
+        new.metadata["MXG"] = 0
+        new.metadata["MYG"] = 0
+        new.metadata["y_boundary_guards"] = 0
+        new["y_boundary_guads"] = 0
+                    
+        return new
+    
     def num_processors(self, nxpe, max_procs, verbose = False):
             """
             Finds all valid processor counts for a given number of X partitions (nxpe)

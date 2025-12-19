@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from .selectors import slice_2d
 
-def plot_selection(ds, selection, dpi = 150):
+def plot_region(ds, region_name, dpi = 150, title = ""):
     """
     Visualises selected grid region over a logical and poloidal grid plot
     
@@ -11,18 +12,20 @@ def plot_selection(ds, selection, dpi = 150):
         Either a Hermes-3 results dataset or a HypnotoadGrid object. Needs to have
         metadata with region boundaries, and Rxy, Zxy and their corner coordinates
         as keys.
-    selection : (poloidal_sel, radial_sel)
-        Two-element tuple of int or slice specifying the row and column
-        selectors, compatible with NumPy 2D indexing.
+    region_name : str
+        Region name to show. Must be compatible with `slice_2d`.
     """
     
     fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
+    
+    selection = slice_2d(ds, region_name)
 
     plot_rz_grid(ds, mode = "logical", selection = selection, ax = axes[0])
     plot_rz_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
     axes[0].set_title("Logical grid")
     axes[1].set_title("Poloidal grid")
     fig.tight_layout()
+    fig.suptitle(title, y = 1.03)
     plt.show()
     
 
@@ -89,7 +92,10 @@ def plot_rz_grid(ds,
         raise Exception("RZ coordinates not found in dataset")
     
     if mode == "poloidal":
-        if "Rxy_lower_right_corners" in ds.keys():
+        if "Rxy_lower_right_corners" not in ds.keys():
+            raise Exception("Cell corners not present in mesh, cannot do polygon plot")
+    
+        else:
             r_nodes = [
                 Rname,
                 "Rxy_lower_left_corners",
@@ -110,8 +116,6 @@ def plot_rz_grid(ds,
             cell_z = np.concatenate(
                 [np.expand_dims(ds[x], axis=2) for x in z_nodes], axis=2
             )
-        else:
-            raise Exception("Cell corners not present in mesh, cannot do polygon plot")
 
         Nx = len(cell_r)
         Ny = len(cell_r[0])
@@ -141,7 +145,7 @@ def plot_rz_grid(ds,
             color_idx[:, m["jyseps2_2g"]] = 4
             color_idx[:, m["ny_innerg"]] = 5
             color_idx[m["ixseps1"], :] = 6
-            if m["topology"] != "single-null":
+            if "single-null" not in m["topology"]:
                 color_idx[m["ixseps2"], :] = 7
             
             # Plot selection
@@ -154,7 +158,7 @@ def plot_rz_grid(ds,
             ax.plot(ds[Rname][m["ixseps1"],:], ds[Zname][m["ixseps1"],:], 
                     label = "ixseps1", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(5))
             
-            if m["topology"] != "single-null":
+            if "single-null" not in m["topology"]:
                 ax.plot(ds[Rname][m["ixseps2"],:], ds[Zname][m["ixseps2"],:], 
                         label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
 
@@ -183,7 +187,6 @@ def plot_rz_grid(ds,
         x = np.array(range(m["nxg"]))
         y = range(m["nyg"])
         
-        print(y)
 
         X, Y = np.meshgrid(y, x)
         color = np.zeros_like(X)
@@ -194,7 +197,7 @@ def plot_rz_grid(ds,
         color[:, m["jyseps2_2g"]] = 4
         color[:, m["ny_innerg"]] = 5
         color[m["ixseps1"], :] = 6
-        if m["topology"] != "single-null":
+        if "single-null" not in m["topology"]:
             color[m["ixseps2"], :] = 7
         
         if selection != None:
