@@ -175,6 +175,18 @@ def slice_2d(ds, name):
                                 polidx("outer_lower_target"),
                                 ])
         
+        slices["sol_inner_boundary"] = (
+            slice_x_outer,
+            np.r_[
+                slice(polidx("inner_lower_target"), polidx("inner_upper_target")+1),
+            ])
+        
+        slices["sol_outer_boundary"] = (
+            slice_x_outer,
+            np.r_[
+                slice(polidx("outer_upper_target"), polidx("outer_lower_target")+1),
+            ])
+        
         slices["sol_boundary"] = (
             slice_x_outer,
             np.r_[
