@@ -217,6 +217,6 @@ def slice_2d(ds, name):
                 "outer_lower_target", "outer_upper_target",
                 "yguards"]:
         
-        slices[name] = (slice(None), slice_poloidal(ds, name))
+        slices[name] = (slice_x_domain, slice_poloidal(ds, name))
     
     return slices[name]
