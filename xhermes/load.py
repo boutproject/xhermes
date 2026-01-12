@@ -565,8 +565,8 @@ class HypnotoadGrid():
         new = self.copy()
         m = self.metadata
         
-        if m["MXG"] == 0 or m["MYG"] == 0:
-            raise Exception("")
+        if m["MXG"] == 0 and m["MYG"] == 0:
+            raise RuntimeError("X and Y guards already removed")
         
         for key in new.keys():
             item = new[key]
@@ -576,16 +576,22 @@ class HypnotoadGrid():
                     
                     # If 2D array, remove radial and poloidal guards
                     if len(item.shape) == 2:
-                        item = item[slice(2,-2), slice(None)]
-                        item = np.delete(item, slice_poloidal(new, "yguards"), axis = 1)
+                        
+                        if m["MXG"] != 0:
+                            item = item[slice(2,-2), slice(None)]
+                        
+                        if m["MYG"] != 0:
+                            item = np.delete(item, slice_poloidal(new, "yguards"), axis = 1)
                         
                     # If 1D array matching radial size, remove radial guards
-                    if len(item.shape) == 1 and item.shape[0] == new["nx"]:
-                        item = item[slice(2,-2)]
+                    if m["MXG"] != 0:
+                        if len(item.shape) == 1 and item.shape[0] == new["nx"]:
+                            item = item[slice(2,-2)]
                     
                     # If 1D array matching poloidal size, remove poloidal guards
-                    if len(item.shape) == 1 and item.shape[0] == new["ny"]:
-                        item = np.delete(item, slice_poloidal(new, "yguards"))
+                    if m["MYG"] != 0:
+                        if len(item.shape) == 1 and item.shape[0] == new["ny"]:
+                            item = np.delete(item, slice_poloidal(new, "yguards"))
                         
                     new[key] = item
                     
