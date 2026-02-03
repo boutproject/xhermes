@@ -1,8 +1,11 @@
 from xbout import open_boutdataset
 
 import os
+import copy
+import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
+from .selectors import slice_poloidal
 
 
 def open_hermesdataset(
@@ -454,6 +457,9 @@ class HypnotoadGrid():
 
     def __getitem__(self, key):
         return self._data[key]
+    
+    def __setitem__(self, key, value):
+        self._data[key] = value
 
     def __getattr__(self, key):
         # Only allow attribute-style access for real variables
@@ -463,6 +469,24 @@ class HypnotoadGrid():
 
     def __repr__(self):
         return f"HypnotoadGrid({list(self._data.keys())})"
+    
+    def copy(self):
+        new = object.__new__(HypnotoadGrid)  # Bypass __init__
+        new._data = {}
+
+        for key, item in self._data.items():
+            
+            # No need to copy strings, ints, floats
+            if isinstance(item, (str, int, float)):
+                new._data[key] = item
+                
+            # Dicts, arrays, etc need copying
+            else:
+                new._data[key] = item.copy()
+
+        new.metadata = self.metadata.copy()
+        
+        return new
                 
 
     def _add_metadata(self):
@@ -485,7 +509,19 @@ class HypnotoadGrid():
         
         # Put m back into the object temporarily to use xBOUT's topology detection
         self.metadata = m
+        
         m["topology"] = _get_topology(self)
+        
+        # TODO: get rid of the below once xBOUT differentiates 
+        # between USN and LSN
+        if "single-null" in m["topology"]:
+
+            
+            if self["Rxy"][0, m["jyseps1_1"]] < self["Rxy"][0, m["jyseps2_2"]]:
+                m["topology"] = "lower-single-null"
+            
+            if self["Rxy"][0, m["jyseps1_1"]] > self["Rxy"][0, m["jyseps2_2"]]:
+                m["topology"] = "upper-single-null"
         
         # Continue adding metadata to "m" which will be put back in later        
         if "single-null" in m["topology"]:
@@ -514,3 +550,171 @@ class HypnotoadGrid():
         m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
+        
+    def remove_guards(self):
+        """
+        Removes radial and poloidal guard cells from Hypnotoad grid.
+        Also sets MXG, MYG and y_boundary_guards metadata to zero.
+        Will raise exception if MXG or MYG are already zero. 
+        
+        Returns
+        -------
+        new : HypnotoadGrid
+            New HypnotoadGrid object with guard cells removed
+        """
+        new = self.copy()
+        m = self.metadata
+        
+        if m["MXG"] == 0 and m["MYG"] == 0:
+            raise RuntimeError("X and Y guards already removed")
+        
+        for key in new.keys():
+            item = new[key]
+            
+            if type(item) == np.ma.core.MaskedArray:
+                if item.shape != ():
+                    
+                    # If 2D array, remove radial and poloidal guards
+                    if len(item.shape) == 2:
+                        
+                        if m["MXG"] != 0:
+                            item = item[slice(2,-2), slice(None)]
+                        
+                        if m["MYG"] != 0:
+                            item = np.delete(item, slice_poloidal(new, "yguards"), axis = 1)
+                        
+                    # If 1D array matching radial size, remove radial guards
+                    if m["MXG"] != 0:
+                        if len(item.shape) == 1 and item.shape[0] == new["nx"]:
+                            item = item[slice(2,-2)]
+                    
+                    # If 1D array matching poloidal size, remove poloidal guards
+                    if m["MYG"] != 0:
+                        if len(item.shape) == 1 and item.shape[0] == new["ny"]:
+                            item = np.delete(item, slice_poloidal(new, "yguards"))
+                        
+                    new[key] = item
+                    
+        new.metadata["MXG"] = 0
+        new.metadata["MYG"] = 0
+        new.metadata["y_boundary_guards"] = 0
+        new["y_boundary_guads"] = 0
+                    
+        return new
+    
+    def num_processors(self, nxpe, max_procs, verbose = False):
+            """
+            Finds all valid processor counts for a given number of X partitions (nxpe)
+            up to a maximum number of processors (max_procs) using the function
+            HypnotoadGrid.check_decomposition.
+            
+            Parameters
+            ----------
+            nxpe : int
+                Number of X partitions
+            max_procs : int
+                Maximum number of processors to check
+            verbose : bool
+                If True, prints out valid processor counts found
+                
+            Returns
+            -------
+            valid_procs : list of int
+                List of valid processor counts
+            """
+            valid_procs = []
+            for i in range(1,max_procs+1):
+                result = self.check_decomposition(nxpe, i)
+                
+                if verbose:
+                    print(f"Checking {i} cores:   {result[1]}")
+                if result[0]:
+                    valid_procs.append(i)
+                    
+            return valid_procs
+
+    
+    def check_decomposition(self, nxpe, nprocs):
+        """
+        Checks if a given number of processors will work with the grid given
+        a number of X partitions (nxpe).
+        
+        Parameters
+        ----------
+        nxpe : int
+            Number of X partitions
+        nprocs : int
+            Total number of processors
+            
+        Returns
+        -------
+        (is_valid, message) : (bool, str)
+            is_valid : bool
+                True if the decomposition is valid, False otherwise
+            message : str
+                Reason why the decomposition is invalid, or "Valid decomposition"
+            
+        Adapted from https://github.com/boutproject/ips-bout/blob/main/ipsbout/bout_worker.py#L89
+        """
+        
+        m = self.metadata
+        nx = m["nx"]
+        ny = m["ny"]
+        MXG = m["MXG"]
+        MYG = m["MYG"]
+        jyseps1_1 = m["jyseps1_1"]
+        jyseps2_1 = m["jyseps2_1"]
+        jyseps1_2 = m["jyseps1_2"]
+        jyseps2_2 = m["jyseps2_2"]
+        ny_inner = m["ny_inner"]
+        
+        
+        MX = nx - 2 * MXG  # Number of points in X on each processor
+
+        # Check inputs.
+        # This follows BOUT++ BoutMesh
+        # https://github.com/boutproject/BOUT-dev/blob/master/src/mesh/impls/bout/boutmesh.cxx#L115
+        if jyseps1_1 < -1:
+            jyseps1_1 = -1
+        if jyseps2_1 < jyseps1_1:
+            jyseps2_1 = jyseps1_1 + 1
+        if jyseps1_2 < jyseps2_1:
+            jyseps1_2 = jyseps2_1
+        if jyseps2_2 >= ny:
+            jyseps2_2 = ny - 1
+        if jyseps2_2 < jyseps1_2:
+            jyseps2_2 = jyseps1_2
+            
+
+        if nprocs % nxpe != 0:
+            return (False, f"X partition count (NXPE={nxpe}) must be a factor of number of cores (nprocs={nprocs})")
+        if MX % nxpe != 0:
+            return (False, f"X domain cell count (nx - 2*MXG={MX}) must divide equally among number of X partitions (NXPE={nxpe})")
+        nype = nprocs // nxpe
+        if ny % nype != 0:
+            return (False, f"Y domain cell count (ny={ny}) must divide equally among Y partitions (NYPE={nype})")  # Y mesh must divide equally among NYPE processors
+        num_local_y_points = ny // nype  # Number of points in Y on each processor
+
+        # These checks are from
+        # https://github.com/boutproject/BOUT-dev/blob/master/src/mesh/impls/bout/boutmesh.cxx#L165
+        if num_local_y_points < MYG and nype != 1:
+            return (False, f"Y cells per core ({num_local_y_points}) must be at least the number of Y guards (MYG={MYG}) when more than one Y partition used (NYPE={nype})> 1")
+        if (jyseps1_1 + 1) % num_local_y_points != 0:
+            return (False, f"Inner or inner lower target region poloidal cell count ({jyseps1_1 + 1}) must fit an integer number of cells on each processor ({num_local_y_points})")
+        if jyseps2_1 != jyseps1_2:
+            # Double null
+            if (jyseps2_1 - jyseps1_1) % num_local_y_points != 0:
+                return (False, f"Inner SOL region poloidal cell count ({jyseps2_1 - jyseps1_1}) must fit an integer number of cells on each processor ({num_local_y_points})")
+            if (jyseps2_2 - jyseps1_2) % num_local_y_points != 0:
+                return (False, f"Outer SOL region poloidal cell count ({jyseps2_2 - jyseps1_2}) must fit an integer number of cells on each processor ({num_local_y_points})")
+            if (ny_inner - jyseps2_1 - 1) % num_local_y_points != 0:
+                return (False, f"Inner upper target region poloidal cell count ({ny_inner - jyseps2_1 - 1}) must fit an integer number of cells on each processor ({num_local_y_points})")
+            if (jyseps1_2 - ny_inner + 1) % num_local_y_points != 0:
+                return (False, f"Outer upper target region poloidal cell count ({jyseps1_2 - ny_inner + 1}) must fit an integer number of cells on each processor ({num_local_y_points})")
+        else:
+            # Single null
+            if (jyseps2_2 - jyseps1_1) % num_local_y_points != 0:
+                return (False, f"SOL region poloidal cell count ({jyseps2_2 - jyseps1_1}) must fit an integer number of cells on each processor ({num_local_y_points})")
+        if (ny - jyseps2_2 - 1) % num_local_y_points != 0:
+            return (False, f"Outer or outer lower divertor region poloidal cell count ({ny - jyseps2_2 - 1}) must fit an integer number of cells on each processor ({num_local_y_points})")
+        return (True, "Valid decomposition")

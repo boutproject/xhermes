@@ -1,6 +1,7 @@
+import numpy as np
 from xarray import register_dataset_accessor, register_dataarray_accessor
 from xbout import BoutDatasetAccessor, BoutDataArrayAccessor
-import numpy as np
+from .selectors import slice_2d
 
 
 @register_dataset_accessor("hermes")
@@ -11,6 +12,24 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
 
     def __init__(self, ds):
         super().__init__(ds)
+        
+    
+    def select_region(self, name):
+        """
+        Select a radial/poloidal region from the dataset
+        
+        Parameters
+        ----------
+        name : str
+            Region name to select. Must be compatible with `slice_2d`.
+        
+        Returns
+        -------
+        xarray.Dataset
+            Dataset with data selected for the specified region
+        """
+        selection = slice_2d(self.data, name)
+        return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
         """
@@ -138,6 +157,16 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             raise Exception(
                 "2D Tokamak topology missing from metadata. Please load model with the flag geometry = 'toroidal' and provide grid")
         
+        # TODO: get rid of the below once xBOUT differentiates 
+        # between USN and LSN
+        if "single-null" in m["topology"]:
+  
+            if ds["Rxy"][0, m["jyseps1_1"]] < ds["Rxy"][0, m["jyseps2_2"]]:
+                m["topology"] = "lower-single-null"
+            
+            if ds["Rxy"][0, m["jyseps1_1"]] > ds["Rxy"][0, m["jyseps2_2"]]:
+                m["topology"] = "upper-single-null"
+        
         # Add theta index to coords so that both X and theta can be accessed index-wise
         # It is surprisingly hard to extract the index of coordinates in Xarray...
         ds.coords["theta_idx"] = (["theta"], range(len(ds.coords["theta"])))
@@ -226,6 +255,40 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
 
     def __init__(self, da):
         super().__init__(da)
+        
+    def clear_guards(self):
+        """
+        Set guard cell values to np.nan
+        """
+        
+        # Clear radial guards
+        xguards = slice_2d(self.data, "xguards")
+        ds = self.data.copy()
+        ds[{"x": xguards[0], "theta": xguards[1]}] = np.nan
+        
+        # Clear target guards if they exist
+        if self.data.metadata["MYG"] > 0:
+            yguards = slice_2d(self.data, f"yguards")
+            ds[{"x": yguards[0], "theta": yguards[1]}] = np.nan
+            
+        return ds
+        
+    def select_region(self, name):
+        """
+        Select a radial/poloidal region from the DataArray
+        
+        Parameters
+        ----------
+        name : str
+            Region name to select. Must be compatible with `slice_2d`.
+        
+        Returns
+        -------
+        xarray.DataArray
+            DataArray with data selected for the specified region
+        """
+        selection = slice_2d(self.data, name)
+        return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
         """
