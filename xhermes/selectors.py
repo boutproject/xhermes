@@ -119,10 +119,13 @@ def slice_2d(ds, name):
     topology = m["topology"]
     
     polidx = lambda x: slice_poloidal(ds, x)
-    slice_x_domain = slice(MXG, nxg - MXG)  # Domain X points (excl guards)
-    slice_x_outer =  nxg - MXG - 1  # Last domain cell on SOL edge side
-    slice_x_inner = MXG
-    
+
+    # Radial selection slices
+    slice_x_domain = slice(MXG, nxg - MXG)  
+    slice_x_outer_final =  nxg - MXG - 1 
+    slice_x_inner_final = MXG             
+    slice_x_outer_guard = nxg - MXG
+    slice_x_inner_guard = MXG - 1 if MXG == 2 else MXG
     
     slices = {}
     
@@ -138,17 +141,17 @@ def slice_2d(ds, name):
                              np.r_[polidx("inner_target"), 
                                    polidx("outer_target")])
         
-        slices["core_boundary"] = (slice_x_inner,
+        slices["core_boundary"] = (slice_x_inner_final,
                                    slice(j1_1g+1, j2_2g+1))
         
         ## Lower single null
         if "lower" in topology:
             slices["sol_boundary"] = (
-                slice_x_outer,
+                slice_x_outer_final,
                 slice(polidx("inner_target"), polidx("outer_target"))
                 )
             slices["pfr_boundary"] = (
-                slice_x_inner,
+                slice_x_inner_final,
                 np.r_[
                     slice(MYG, j1_1g+1),
                     slice(j2_2g+1, nyg - MYG)
@@ -158,11 +161,11 @@ def slice_2d(ds, name):
         ## Upper single null
         elif "upper" in topology:
             slices["sol_boundary"] = (
-                slice_x_outer,
+                slice_x_outer_final,
                 slice(polidx("outer_target"), polidx("inner_target"))
                 )
             slices["pfr_boundary"] = (
-                slice_x_inner,
+                slice_x_inner_final,
                 np.r_[
                     slice(MYG, j1_1g+1),
                     slice(j2_2g+1, nyg - MYG)
@@ -183,31 +186,47 @@ def slice_2d(ds, name):
                                 ])
         
         slices["sol_inner_boundary"] = (
-            slice_x_outer,
+            slice_x_outer_final,
             np.r_[
                 slice(polidx("inner_lower_target"), polidx("inner_upper_target")+1),
             ])
         
         slices["sol_outer_boundary"] = (
-            slice_x_outer,
+            slice_x_outer_final,
             np.r_[
                 slice(polidx("outer_upper_target"), polidx("outer_lower_target")+1),
             ])
         
         slices["sol_boundary"] = (
-            slice_x_outer,
+            slice_x_outer_final,
             np.r_[
                 slice(polidx("inner_lower_target"), polidx("inner_upper_target")+1),
                 slice(polidx("outer_upper_target"), polidx("outer_lower_target")+1),
             ])
         
-        slices["core_boundary"] = (slice_x_inner,
+        slices["sol_boundary_guard"] = (
+            slice_x_outer_guard,
+            np.r_[
+                slice(polidx("inner_lower_target"), polidx("inner_upper_target")+1),
+                slice(polidx("outer_upper_target"), polidx("outer_lower_target")+1),
+            ])
+        
+        
+        slices["core_boundary"] = (slice_x_inner_final,
                                    np.r_[
                                        slice(j1_1g+1, j2_1g+1),
                                        slice(j1_2g+1, j2_2g+1)]
                                    )
         
-        slices["pfr_boundary"] = (slice_x_inner,
+        slices["pfr_boundary"] = (slice_x_inner_final,
+                                   np.r_[
+                                       slice(MYG, j1_1g+1),
+                                       slice(j2_1g+1, ny_innerg-MYG*2),
+                                       slice(ny_innerg, j1_2g+1),
+                                       slice(j2_2g+1, nyg-MYG)]
+                                   )
+        
+        slices["pfr_boundary_guard"] = (slice_x_inner_guard,
                                    np.r_[
                                        slice(MYG, j1_1g+1),
                                        slice(j2_1g+1, ny_innerg-MYG*2),
@@ -217,13 +236,21 @@ def slice_2d(ds, name):
         
     else:
         raise ValueError(f"Unknown topology: {topology}")
-    
+
     # Poloidal selections
     if name in ["inner_target", "outer_target",
                 "inner_lower_target", "inner_upper_target",
                 "outer_lower_target", "outer_upper_target",
-                "yguards"]:
+                "yguards",
+                "inner_midplane_a", "inner_midplane_b",
+                "outer_midplane_a", "outer_midplane_b"]:
         
         slices[name] = (slice_x_domain, slice_poloidal(ds, name))
+
+    if name in ["yguards"] and MYG == 0:
+        raise ValueError("No y guards found in dataset, cannot select poloidal guards!")
+    
+    if name in ["sol_boundary_guard", "pfr_boundary_guard"] and MXG == 0:
+        raise ValueError("No x guards found in dataset, cannot select radial guards!")
     
     return slices[name]
