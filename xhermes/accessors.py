@@ -220,6 +220,8 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         # Cell areas in real space - comes from Jacobian
         # Note: can be calculated from flux space or real space coordinates:
         # dV = (hthe/Bpol) * (R*Bpol*dr) * dy*2pi = hthe * dy * dr * 2pi * R
+
+        # Radial cell length
         ds["dr"] = (["x", "theta"], ds.dx.data / (ds.R.data * ds.Bpxy.data))
         ds["dr"].attrs.update({
             "conversion" : 1,
@@ -228,7 +230,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             "long_name" : "Length of cell in the radial direction",
             "source" : "xHermes"})
         
-        ds["hthe"] = (["x", "theta"], ds["J"].data * ds["Bpxy"].data)    # h_theta
+        ds["hthe"] = (["x", "theta"], ds["J"].data * ds["Bpxy"].data) 
         ds["hthe"].attrs.update({
             "conversion" : 1,
             "units" : "m/radian",
@@ -236,14 +238,37 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             "long_name" : "h_theta: poloidal arc length per radian",
             "source" : "xHermes"})
         
-        ds["dl"] = (["x", "theta"], ds["dy"].data * ds["hthe"].data)    # poloidal arc length
-        ds["dl"].attrs.update({
-            "conversion" : 1,
-            "units" : "m",
-            "standard_name" : "poloidal arc length",
-            "long_name" : "Poloidal arc length",
-            "source" : "xHermes"})
-        
+
+        # Toroidal cell length
+        ds["dtor"] = (
+            ["x", "theta"],
+            ds["dz"].data * np.sqrt(ds["g_33"].data),
+        )  
+        ds["dtor"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "Toroidal length",
+                "long_name": "Toroidal length",
+                "source": "xHermes",
+            }
+        )
+
+        # Poloidal cell length
+        ds["dpol"] = (
+            ["x", "theta"],
+            ds["dy"].data * ds["hthe"].data,
+        )  # Poloidal length
+        ds["dpol"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "Poloidal length",
+                "long_name": "Poloidal length",
+                "source": "xHermes",
+            }
+        )
+
         return ds
 
 
