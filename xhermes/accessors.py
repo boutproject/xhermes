@@ -271,6 +271,64 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
 
         return ds
 
+    def calculate_boundary_flows(self):
+        """
+        Calculate particle sources at SOL and PFR boundaries
+
+        For each species in the dataset, calculates the particle source
+        at the SOL and PFR boundaries by dividing the flow diagnostics
+        by cell volume. These are then added back to the dataset.
+        This allows boundary flows to be treated like regular sources
+        which helps make post-processing more straightforward.
+
+        TODO: Add energy flows
+        TODO: Add flows in y direction
+
+        Returns
+        -------
+        xarray.Dataset
+            Dataset with added boundary flow source terms
+        """
+
+        ds = self.data
+
+        sol = ds.hermes.select_region("sol_boundary")
+        pfr = ds.hermes.select_region("pfr_boundary")
+        sol_guard = ds.hermes.select_region("sol_boundary_guard")
+
+        for name in ds.metadata["species"]:
+
+            # Account for inconsistency in diagnostic names
+            if name in ds.metadata["neutral_species"]:
+                flow_diagnostic_name = f"pf{name}_adv_perp_xlow"
+            else:
+                flow_diagnostic_name = f"pf{name}_tot_xlow"
+
+            if flow_diagnostic_name in ds.data_vars:
+
+                # xlow means SOL boundary flow is read at guard cell
+                ds[f"S{name}_sol_boundary"] = (
+                    sol_guard[flow_diagnostic_name] / sol["dv"]
+                )
+                ds[f"S{name}_sol_boundary"].attrs.update(
+                    {
+                        "short_name": "Particle source",
+                        "long_name": f"Particle source of {name} at SOL boundary",
+                        "units": "m^-3 s^-1",
+                    }
+                )
+
+                # xlow means PFR boundary flow is read at final domain cell
+                ds[f"S{name}_pfr_boundary"] = pfr[flow_diagnostic_name] / pfr["dv"]
+                ds[f"S{name}_pfr_boundary"].attrs.update(
+                    {
+                        "short_name": "Particle source",
+                        "long_name": f"Particle source of {name} at PFR boundary",
+                        "units": "m^-3 s^-1",
+                    }
+                )
+
+        return ds
 
 @register_dataarray_accessor("hermes")
 class HermesDataArrayAccessor(BoutDataArrayAccessor):
