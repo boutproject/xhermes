@@ -47,12 +47,19 @@ def slice_poloidal(ds, name):
         else:
             index["inner_target"] = nyg - MYG - 1
             index["outer_target"] = MYG
-            
+
     elif "double-null" in topology:
         index["inner_lower_target"] = MYG
         index["outer_lower_target"] = nyg - MYG - 1
         index["inner_upper_target"] = ny_innerg - MYG * 2 -1 
         index["outer_upper_target"] = ny_innerg 
+
+        # Midplane is inbetween two cell centres, "a" and "b"
+        # "a" is the lower midplane index, "b" is the upper midplane index
+        index["outer_midplane_a"] = int((j2_2g - j1_2g) / 2) + j1_2g
+        index["outer_midplane_b"] = int((j2_2g - j1_2g) / 2) + j1_2g + 1     
+        index["inner_midplane_a"] = int((j2_1g - j1_1g) / 2) + j1_1g 
+        index["inner_midplane_b"] = int((j2_1g - j1_1g) / 2) + j1_1g + 1    
 
     # Guard selection
     if "guard" in name:
