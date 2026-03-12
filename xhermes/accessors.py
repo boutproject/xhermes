@@ -220,6 +220,8 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         # Cell areas in real space - comes from Jacobian
         # Note: can be calculated from flux space or real space coordinates:
         # dV = (hthe/Bpol) * (R*Bpol*dr) * dy*2pi = hthe * dy * dr * 2pi * R
+
+        # Radial cell length
         ds["dr"] = (["x", "theta"], ds.dx.data / (ds.R.data * ds.Bpxy.data))
         ds["dr"].attrs.update({
             "conversion" : 1,
@@ -228,7 +230,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             "long_name" : "Length of cell in the radial direction",
             "source" : "xHermes"})
         
-        ds["hthe"] = (["x", "theta"], ds["J"].data * ds["Bpxy"].data)    # h_theta
+        ds["hthe"] = (["x", "theta"], ds["J"].data * ds["Bpxy"].data) 
         ds["hthe"].attrs.update({
             "conversion" : 1,
             "units" : "m/radian",
@@ -236,16 +238,97 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             "long_name" : "h_theta: poloidal arc length per radian",
             "source" : "xHermes"})
         
-        ds["dl"] = (["x", "theta"], ds["dy"].data * ds["hthe"].data)    # poloidal arc length
-        ds["dl"].attrs.update({
-            "conversion" : 1,
-            "units" : "m",
-            "standard_name" : "poloidal arc length",
-            "long_name" : "Poloidal arc length",
-            "source" : "xHermes"})
-        
+
+        # Toroidal cell length
+        ds["dtor"] = (
+            ["x", "theta"],
+            ds["dz"].data * np.sqrt(ds["g_33"].data),
+        )  
+        ds["dtor"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "Toroidal length",
+                "long_name": "Toroidal length",
+                "source": "xHermes",
+            }
+        )
+
+        # Poloidal cell length
+        ds["dpol"] = (
+            ["x", "theta"],
+            ds["dy"].data * ds["hthe"].data,
+        )  # Poloidal length
+        ds["dpol"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "Poloidal length",
+                "long_name": "Poloidal length",
+                "source": "xHermes",
+            }
+        )
+
         return ds
 
+    def calculate_boundary_flows(self):
+        """
+        Calculate particle sources at SOL and PFR boundaries
+
+        For each species in the dataset, calculates the particle source
+        at the SOL and PFR boundaries by dividing the flow diagnostics
+        by cell volume. These are then added back to the dataset.
+        This allows boundary flows to be treated like regular sources
+        which helps make post-processing more straightforward.
+
+        TODO: Add energy flows
+        TODO: Add flows in y direction
+
+        Returns
+        -------
+        xarray.Dataset
+            Dataset with added boundary flow source terms
+        """
+
+        ds = self.data
+
+        sol = ds.hermes.select_region("sol_boundary")
+        pfr = ds.hermes.select_region("pfr_boundary")
+        sol_guard = ds.hermes.select_region("sol_boundary_guard")
+
+        for name in ds.metadata["species"]:
+
+            # Account for inconsistency in diagnostic names
+            if name in ds.metadata["neutral_species"]:
+                flow_diagnostic_name = f"pf{name}_adv_perp_xlow"
+            else:
+                flow_diagnostic_name = f"pf{name}_tot_xlow"
+
+            if flow_diagnostic_name in ds.data_vars:
+
+                # xlow means SOL boundary flow is read at guard cell
+                ds[f"S{name}_sol_boundary"] = (
+                    sol_guard[flow_diagnostic_name] / sol["dv"]
+                )
+                ds[f"S{name}_sol_boundary"].attrs.update(
+                    {
+                        "short_name": "Particle source",
+                        "long_name": f"Particle source of {name} at SOL boundary",
+                        "units": "m^-3 s^-1",
+                    }
+                )
+
+                # xlow means PFR boundary flow is read at final domain cell
+                ds[f"S{name}_pfr_boundary"] = pfr[flow_diagnostic_name] / pfr["dv"]
+                ds[f"S{name}_pfr_boundary"].attrs.update(
+                    {
+                        "short_name": "Particle source",
+                        "long_name": f"Particle source of {name} at PFR boundary",
+                        "units": "m^-3 s^-1",
+                    }
+                )
+
+        return ds
 
 @register_dataarray_accessor("hermes")
 class HermesDataArrayAccessor(BoutDataArrayAccessor):
