@@ -25,55 +25,95 @@ def slice_poloidal(ds, name):
     j1_2g = m["jyseps1_2g"]
     j2_1g = m["jyseps2_1g"]
     j2_2g = m["jyseps2_2g"]
+    ixseps1 = m["ixseps1"]
     MXG = m["MXG"]
     MYG = m["MYG"]
     nxg = m["nxg"]
     nyg = m["nyg"]
     ny_innerg = m["ny_innerg"]
     topology = m["topology"]
-    
-    
+
     index = {}
-    
+
     # Target selection
     if "single-null" in topology:
-        if any([x in name for x in ["inner_lower", "inner_upper", "outer_lower", "outer_upper"]]):
+        if any(
+            [
+                x in name
+                for x in ["inner_lower_target", "inner_upper_target", "outer_lower_target", "outer_upper_target"]
+            ]
+        ):
             raise ValueError(f"{name} region not present in {topology}")
-        
+
     if "single-null" in topology:
+
         if "lower" in topology:
             index["inner_target"] = MYG
             index["outer_target"] = nyg - MYG - 1
         else:
             index["inner_target"] = nyg - MYG - 1
             index["outer_target"] = MYG
-            
+
+        # R is called Rxy in the grid..
+        if "Rxy" in ds.keys():
+            suffix = "xy"
+        elif "R" in ds.keys():
+            suffix = ""
+        else:
+            raise Exception("RZ coordinates not found in dataset")
+
+        R_sep = ds[f"R{suffix}"][ixseps1, :]
+        R_diff = np.diff(R_sep)
+
+        # Single null midplane found by R gradient sign change
+        peaks = np.where(abs(np.diff(np.sign(R_diff))) > 0)[0] + 1
+        index["inner_lower_midplane"] = int(peaks[1])
+        index["inner_upper_midplane"] = int(peaks[1]) + 1
+        index["outer_lower_midplane"] = int(peaks[2])
+        index["outer_upper_midplane"] = int(peaks[2]) - 1
+
+        index["inner_xpoint"] = j1_1g
+        index["outer_xpoint"] = j1_1g
+
     elif "double-null" in topology:
         index["inner_lower_target"] = MYG
         index["outer_lower_target"] = nyg - MYG - 1
-        index["inner_upper_target"] = ny_innerg - MYG * 2 -1 
-        index["outer_upper_target"] = ny_innerg 
+        index["inner_upper_target"] = ny_innerg - MYG * 2 - 1
+        index["outer_upper_target"] = ny_innerg
+
+        # Double null midplane found by region cuts
+        index["inner_lower_midplane"] = int((j2_1g - j1_1g) / 2) + j1_1g
+        index["inner_upper_midplane"] = int((j2_1g - j1_1g) / 2) + j1_1g + 1
+        index["outer_upper_midplane"] = int((j2_2g - j1_2g) / 2) + j1_2g
+        index["outer_lower_midplane"] = int((j2_2g - j1_2g) / 2) + j1_2g + 1
+        
+        # X-point index defined as first point in divertor region
+        index["inner_lower_xpoint"] = j1_1g
+        index["inner_upper_xpoint"] = j2_1g + 1
+        index["outer_upper_xpoint"] = j1_2g
+        index["outer_lower_xpoint"] = j2_2g + 1
 
     # Guard selection
     if "guard" in name:
         if MYG > 0:
             if "single-null" in topology:
-                index["yguards"] = np.r_[
-                    slice(None,MYG),
-                    slice(nyg-MYG, nyg)
-                ]
-            
+                index["yguards"] = np.r_[slice(None, MYG), slice(nyg - MYG, nyg)]
+
             else:
                 index["yguards"] = np.r_[
-                    slice(None,MYG),
+                    slice(None, MYG),
                     slice(ny_innerg - MYG * 2, ny_innerg - MYG),
                     slice(ny_innerg - MYG, ny_innerg),
-                    slice(nyg-MYG, nyg)
+                    slice(nyg - MYG, nyg),
                 ]
-            
+
         else:
             raise ValueError("Cannot select guards - no guards found in domain!")
-        
+
+    if name not in index:
+        raise ValueError(
+            f"{name} region not recognised for poloidal selection in {topology} topology."
+        )
     
     return index[name]
     
