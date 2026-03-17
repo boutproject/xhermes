@@ -3,7 +3,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from .selectors import slice_2d
 
-def plot_region(ds, region_name, dpi = 150, title = ""):
+def plot_selection(ds, selection=None, region=None, dpi = 150, title = ""):
     """
     Visualises selected grid region over a logical and poloidal grid plot
     
@@ -12,13 +12,24 @@ def plot_region(ds, region_name, dpi = 150, title = ""):
         Either a Hermes-3 results dataset or a HypnotoadGrid object. Needs to have
         metadata with region boundaries, and Rxy, Zxy and their corner coordinates
         as keys.
-    region_name : str
-        Region name to show. Must be compatible with `slice_2d`.
+    selection : tuple, optional
+        Two-element tuple of int or slice specifying the row and column
+        selectors, compatible with NumPy 2D indexing. 
+        Use xhermes.slice_2d to generate one from a region name.
+    region : str, optional
+        Name of the region to plot to pass to xhermes.slice_2d to generate the selection. 
+        Ignored if selection is provided.
+    dpi : int, optional
+        Dots per inch for the figure. Higher values give better quality but larger file size.
+    title : str, optional
+        Title for the figure. Default is an empty string.
     """
+    if selection is None and region is not None:
+        selection = slice_2d(ds, region)
+    elif selection is None and region is None:
+        raise ValueError("Either selection or region must be provided")
     
     fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
-    
-    selection = slice_2d(ds, region_name)
 
     plot_rz_grid(ds, mode = "logical", selection = selection, ax = axes[0])
     plot_rz_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
