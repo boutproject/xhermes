@@ -40,7 +40,7 @@ def plot_selection(ds, selection=None, region=None, dpi = 150, title = ""):
     plt.show()
     
 
-def plot_rz_grid(ds, 
+def plot_grid(ds, 
                 selection = None,
                 mode = "logical",
                 ax = None, 
