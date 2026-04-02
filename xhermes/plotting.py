@@ -3,7 +3,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from .selectors import slice_2d
 
-def plot_selection(ds, selection=None, region=None, dpi = 150, title = ""):
+def plot_selection(ds, selection=None, region=None, dpi = 150, title = "", axes = None):
     """
     Visualises selected grid region over a logical and poloidal grid plot
     
@@ -29,15 +29,21 @@ def plot_selection(ds, selection=None, region=None, dpi = 150, title = ""):
     elif selection is None and region is None:
         raise ValueError("Either selection or region must be provided")
     
-    fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
+    if axes is None:
+        fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
+        own_fig = True
+    else:
+        fig = axes[0].get_figure()
+        own_fig = False
 
-    plot_rz_grid(ds, mode = "logical", selection = selection, ax = axes[0])
-    plot_rz_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
+    plot_grid(ds, mode = "logical", selection = selection, ax = axes[0])
+    plot_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
     axes[0].set_title("Logical grid")
     axes[1].set_title("Poloidal grid")
-    fig.tight_layout()
-    fig.suptitle(title, y = 1.03)
-    plt.show()
+    if own_fig:
+        fig.tight_layout()
+        fig.suptitle(title, y = 1.03)
+        plt.show()
     
 
 def plot_grid(ds, 
