@@ -4,6 +4,9 @@ def slice_poloidal(ds, name):
     """
     
     Returns poloidal indices/slices for named regions within a dataset.
+
+    NOTES ON CONVENTION:
+    - The slices will always include the inner guard cells.
     
     Parameters
     ----------
@@ -28,6 +31,7 @@ def slice_poloidal(ds, name):
     ixseps1 = m["ixseps1"]
     MXG = m["MXG"]
     MYG = m["MYG"]
+    MYG_half = int(MYG/2)
     nxg = m["nxg"]
     nyg = m["nyg"]
     ny_innerg = m["ny_innerg"]
@@ -47,12 +51,22 @@ def slice_poloidal(ds, name):
 
     if "single-null" in topology:
 
+        index["core"] = slice(j1_1g+1, j2_2g+1)
+
+        # Targets and X-points
         if "lower" in topology:
             index["inner_target"] = MYG
             index["outer_target"] = nyg - MYG - 1
+
+            index["inner_xpoint"] = j1_1g
+            index["outer_xpoint"] = j2_2g + 1
+
         else:
             index["inner_target"] = nyg - MYG - 1
             index["outer_target"] = MYG
+
+            index["inner_xpoint"] = j1_1g
+            index["outer_xpoint"] = j1_1g
 
         # R is called Rxy in the grid..
         if "Rxy" in ds.keys():
@@ -67,19 +81,67 @@ def slice_poloidal(ds, name):
 
         # Single null midplane found by R gradient sign change
         peaks = np.where(abs(np.diff(np.sign(R_diff))) > 0)[0] + 1
-        index["inner_lower_midplane"] = int(peaks[1])
-        index["inner_upper_midplane"] = int(peaks[1]) + 1
-        index["outer_lower_midplane"] = int(peaks[2])
-        index["outer_upper_midplane"] = int(peaks[2]) - 1
 
-        index["inner_xpoint"] = j1_1g
-        index["outer_xpoint"] = j1_1g
+        if "lower" in topology:
+            index["inner_lower_midplane"] = int(peaks[1])
+            index["inner_upper_midplane"] = int(peaks[1]) + 1
+            index["outer_lower_midplane"] = int(peaks[2])
+            index["outer_upper_midplane"] = int(peaks[2]) - 1
+            
+            # SOL starting in cell before midplane so that you can interpolate to exact midplane
+            index["inner_sol_extra"] = slice(MYG_half, index["inner_upper_midplane"]+1)
+            index["outer_sol_extra"] = slice(index["outer_lower_midplane"]-1, nyg - MYG_half)
+            
+            # SOL starting at the first cell centre after the midplane
+            index["inner_sol"] = slice(MYG_half, index["inner_upper_midplane"])
+            index["outer_sol"] = slice(index["outer_lower_midplane"], nyg - MYG_half)
 
+            # SOL from target to target
+            index["sol"] = slice(MYG_half, nyg - MYG_half)
+
+            # SOL starting in the first cell centre after X-point
+            index["inner_divertor"] = slice(MYG_half, j1_1g+1)
+            index["outer_divertor"] = slice(j2_2g + 1, nyg - MYG_half)
+
+            index["pfr"] = np.r_[index["inner_divertor"], index["outer_divertor"]]
+
+        if "upper" in topology:
+            index["inner_lower_midplane"] = int(peaks[2]) - 1
+            index["inner_upper_midplane"] = int(peaks[2])
+            index["outer_lower_midplane"] = int(peaks[1]) + 1
+            index["outer_upper_midplane"] = int(peaks[1])
+
+            # SOL starting in cell before midplane so that you can interpolate to exact midplane
+            index["inner_sol_extra"] = slice(index["inner_lower_midplane"], nyg - MYG_half)
+            index["outer_sol_extra"] = slice(MYG_half, index["outer_lower_midplane"]+1)
+
+            # SOL starting at the first cell centre after the midplane
+            index["inner_sol"] = slice(index["inner_lower_midplane"]+1, nyg - MYG_half)
+            index["outer_sol"] = slice(MYG_half, index["outer_lower_midplane"])
+
+            # SOL from target to target
+            index["sol"] = slice(MYG_half, nyg - MYG_half)
+
+            # SOL starting in the first cell centre after X-point
+            index["inner_divertor"] = slice(j2_2g+1, nyg-MYG_half)
+            index["outer_divertor"] = slice(MYG_half, j1_1g+1)
+
+            index["pfr"] = np.r_[index["inner_divertor"], index["outer_divertor"]]
+
+    
     elif "double-null" in topology:
+
+        # Targets
         index["inner_lower_target"] = MYG
         index["outer_lower_target"] = nyg - MYG - 1
         index["inner_upper_target"] = ny_innerg - MYG * 2 - 1
         index["outer_upper_target"] = ny_innerg
+
+        # X-point index defined as first point in divertor region
+        index["inner_lower_xpoint"] = j1_1g
+        index["inner_upper_xpoint"] = j2_1g + 1
+        index["outer_upper_xpoint"] = j1_2g
+        index["outer_lower_xpoint"] = j2_2g + 1
 
         # Double null midplane found by region cuts
         index["inner_lower_midplane"] = int((j2_1g - j1_1g) / 2) + j1_1g
@@ -87,11 +149,41 @@ def slice_poloidal(ds, name):
         index["outer_upper_midplane"] = int((j2_2g - j1_2g) / 2) + j1_2g
         index["outer_lower_midplane"] = int((j2_2g - j1_2g) / 2) + j1_2g + 1
         
-        # X-point index defined as first point in divertor region
-        index["inner_lower_xpoint"] = j1_1g
-        index["inner_upper_xpoint"] = j2_1g + 1
-        index["outer_upper_xpoint"] = j1_2g
-        index["outer_lower_xpoint"] = j2_2g + 1
+    
+        ## SOL
+
+        # SOL starting in cell before midplane so that you can interpolate to exact midplane
+        index["inner_lower_sol_extra"] = slice(MYG_half, index["inner_lower_midplane"] + 2)
+        index["inner_upper_sol_extra"] = slice(index["inner_upper_midplane"]-1, ny_innerg - MYG - MYG_half)
+        index["outer_upper_sol_extra"] = slice(ny_innerg-MYG_half, index["outer_lower_midplane"]+1)
+        index["outer_lower_sol_extra"] = slice(index["outer_lower_midplane"]-1, nyg - MYG_half)
+
+        # SOL starting at the first cell centre after the midplane
+        index["inner_lower_sol"] = slice(MYG_half, index["inner_lower_midplane"] + 1)
+        index["inner_upper_sol"] = slice(index["inner_upper_midplane"], ny_innerg - MYG - MYG_half)
+        index["outer_upper_sol"] = slice(ny_innerg-MYG_half, index["outer_lower_midplane"])
+        index["outer_lower_sol"] = slice(index["outer_lower_midplane"], nyg - MYG_half)
+
+        # SOL starting at the first cell centre after the X-point
+        index["inner_lower_divertor"] = slice(MYG_half, j1_1g+1)
+        index["inner_upper_divertor"] = slice(j2_1g + 1, ny_innerg - MYG - MYG_half)
+        index["outer_upper_divertor"] = slice(ny_innerg-MYG_half, j1_2g+1)
+        index["outer_lower_divertor"] = slice(j2_2g + 1, nyg - MYG_half)
+
+        index["inner_sol"] = slice(MYG_half, ny_innerg - MYG - MYG_half)
+        index["outer_sol"] = slice(ny_innerg - MYG_half, nyg - MYG_half)
+
+        index["sol"] = np.r_[index["inner_sol"], index["outer_sol"]]
+        
+        # Core and PFR
+        index["inner_core"] = slice(j1_1g+1, j2_1g+1)
+        index["outer_core"] = slice(j1_2g+1, j2_2g+1)
+        index["core"] = np.r_[index["inner_core"], index["outer_core"]]
+
+        index["lower_pfr"] = np.r_[index["inner_lower_divertor"], index["outer_lower_divertor"]]
+        index["upper_pfr"] = np.r_[index["inner_upper_divertor"], index["outer_upper_divertor"]]
+        index["pfr"] = np.r_[index["lower_pfr"], index["upper_pfr"]]
+
 
     # Guard selection
     if "guard" in name:
