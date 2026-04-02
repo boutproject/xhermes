@@ -165,7 +165,7 @@ def plot_grid(ds,
             if "single-null" not in m["topology"]:
                 color_idx[m["ixseps2"], :] = 7
             
-            # Plot selection
+            # Plot selection: color patches deeppink in RZ mode
             if selection != None:
                 color_idx[selection] = 8
                 ax.plot(ds[Rname][selection], ds[Zname][selection], 
@@ -180,7 +180,7 @@ def plot_grid(ds,
                         label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
 
         colors_flat = color_idx.flatten()
-        
+
         polys = mpl.collections.PatchCollection(
             patches,
             alpha=1,
@@ -218,7 +218,6 @@ def plot_grid(ds,
             color[m["ixseps2"], :] = 7
         
         if selection != None:
-            color[selection] = 8
             ax.plot(Y[selection], X[selection], 
                         label = "selection", lw = 0, alpha = 1, ms = ms_selection, marker = "o", c = cmap(8), 
                         markeredgecolor = "yellow", zorder = 100)
@@ -241,7 +240,7 @@ def plot_grid(ds,
     ]
     
     if legend:
-        ax.legend(handles = legend_handles, loc = "best", ncols = 2)
+        ax.legend(handles = legend_handles, loc = "best", ncols = 2, fontsize = "xx-small")
     
     ax.set_axisbelow(True)
     ax.grid(False)
