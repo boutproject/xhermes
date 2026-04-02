@@ -3,7 +3,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from .selectors import slice_2d
 
-def plot_region(ds, region_name, dpi = 150, title = ""):
+def plot_selection(ds, selection=None, region=None, dpi = 150, title = "", axes = None):
     """
     Visualises selected grid region over a logical and poloidal grid plot
     
@@ -12,24 +12,41 @@ def plot_region(ds, region_name, dpi = 150, title = ""):
         Either a Hermes-3 results dataset or a HypnotoadGrid object. Needs to have
         metadata with region boundaries, and Rxy, Zxy and their corner coordinates
         as keys.
-    region_name : str
-        Region name to show. Must be compatible with `slice_2d`.
+    selection : tuple, optional
+        Two-element tuple of int or slice specifying the row and column
+        selectors, compatible with NumPy 2D indexing. 
+        Use xhermes.slice_2d to generate one from a region name.
+    region : str, optional
+        Name of the region to plot to pass to xhermes.slice_2d to generate the selection. 
+        Ignored if selection is provided.
+    dpi : int, optional
+        Dots per inch for the figure. Higher values give better quality but larger file size.
+    title : str, optional
+        Title for the figure. Default is an empty string.
     """
+    if selection is None and region is not None:
+        selection = slice_2d(ds, region)
+    elif selection is None and region is None:
+        raise ValueError("Either selection or region must be provided")
     
-    fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
-    
-    selection = slice_2d(ds, region_name)
+    if axes is None:
+        fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
+        own_fig = True
+    else:
+        fig = axes[0].get_figure()
+        own_fig = False
 
-    plot_rz_grid(ds, mode = "logical", selection = selection, ax = axes[0])
-    plot_rz_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
+    plot_grid(ds, mode = "logical", selection = selection, ax = axes[0])
+    plot_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
     axes[0].set_title("Logical grid")
     axes[1].set_title("Poloidal grid")
-    fig.tight_layout()
-    fig.suptitle(title, y = 1.03)
-    plt.show()
+    if own_fig:
+        fig.tight_layout()
+        fig.suptitle(title, y = 1.03)
+        plt.show()
     
 
-def plot_rz_grid(ds, 
+def plot_grid(ds, 
                 selection = None,
                 mode = "logical",
                 ax = None, 
@@ -148,7 +165,7 @@ def plot_rz_grid(ds,
             if "single-null" not in m["topology"]:
                 color_idx[m["ixseps2"], :] = 7
             
-            # Plot selection
+            # Plot selection: color patches deeppink in RZ mode
             if selection != None:
                 color_idx[selection] = 8
                 ax.plot(ds[Rname][selection], ds[Zname][selection], 
@@ -163,7 +180,7 @@ def plot_rz_grid(ds,
                         label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
 
         colors_flat = color_idx.flatten()
-        
+
         polys = mpl.collections.PatchCollection(
             patches,
             alpha=1,
@@ -201,7 +218,6 @@ def plot_rz_grid(ds,
             color[m["ixseps2"], :] = 7
         
         if selection != None:
-            color[selection] = 8
             ax.plot(Y[selection], X[selection], 
                         label = "selection", lw = 0, alpha = 1, ms = ms_selection, marker = "o", c = cmap(8), 
                         markeredgecolor = "yellow", zorder = 100)
@@ -224,7 +240,7 @@ def plot_rz_grid(ds,
     ]
     
     if legend:
-        ax.legend(handles = legend_handles, loc = "best", ncols = 2)
+        ax.legend(handles = legend_handles, loc = "best", ncols = 2, fontsize = "xx-small")
     
     ax.set_axisbelow(True)
     ax.grid(False)
