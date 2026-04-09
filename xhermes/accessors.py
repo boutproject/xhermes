@@ -231,7 +231,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds["dr"].attrs.update({
             "conversion" : 1,
             "units" : "m",
-            "standard_name" : "radial length",
+            "standard_name" : "radial cell length",
             "long_name" : "Length of cell in the radial direction",
             "source" : "xHermes"})
         
@@ -239,16 +239,24 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds["hthe"].attrs.update({
             "conversion" : 1,
             "units" : "m/radian",
-            "standard_name" : "h_theta: poloidal arc length per radian",
-            "long_name" : "h_theta: poloidal arc length per radian",
+            "standard_name" : "h_theta: poloidal arc cell length per radian",
+            "long_name" : "h_theta: poloidal arc cell length per radian",
             "source" : "xHermes"})
         
-        ds["dl"] = (["x", "theta"], ds["dy"].data * ds["hthe"].data)    # poloidal arc length
-        ds["dl"].attrs.update({
+        ds["dpol"] = (["x", "theta"], ds["dy"].data * ds["hthe"].data)   # Poloidal cell length
+        ds["dpol"].attrs.update({
             "conversion" : 1,
             "units" : "m",
-            "standard_name" : "poloidal arc length",
-            "long_name" : "Poloidal arc length",
+            "standard_name" : "Poloidal cell length",
+            "long_name" : "Poloidal cell length",
+            "source" : "xHermes"})
+        
+        ds["dtor"] = (["x", "theta"], ds["dz"].data * np.sqrt(ds["g_33"].data))   # Toroidal cell length
+        ds["dtor"].attrs.update({
+            "conversion" : 1,
+            "units" : "m",
+            "standard_name" : "Toroidal cell length",
+            "long_name" : "Toroidal cell length",
             "source" : "xHermes"})
         
         return ds
