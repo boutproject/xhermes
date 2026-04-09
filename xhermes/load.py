@@ -342,6 +342,12 @@ def open_hermesdataset(
     if unnormalise:
         ds.hermes.unnormalise()
 
+    # Identify species before processing components that depend on ion_species.
+    meta["species"] = [x.split("P")[1] for x in ds.data_vars if x.startswith("P") and len(x) < 4]
+    meta["charged_species"] = [x for x in meta["species"] if "e" in x or "+" in x]
+    meta["ion_species"] = [x for x in meta["species"] if "+" in x]
+    meta["neutral_species"] = list(set(meta["species"]).difference(set(meta["charged_species"])))
+
     if ds.attrs["options"] is not None:
         # Process options
         options = ds.attrs["options"]
@@ -378,20 +384,23 @@ def open_hermesdataset(
     # Identify dimensions
     dims = list(ds.squeeze().dims)
     if "t" in dims: dims.remove("t")
-    meta["dimensions"] = len(dims)
-    
-    # Identify species
-    meta["species"] = [x.split("P")[1] for x in ds.data_vars if x.startswith("P") and len(x) < 4]
-    meta["charged_species"] = [x for x in meta["species"] if "e" in x or "+" in x]
-    meta["ion_species"] = [x for x in meta["species"] if "+" in x]
-    meta["neutral_species"] = list(set(meta["species"]).difference(set(meta["charged_species"])))
+    num_dims = len(dims)
+    meta["dimensions"] = num_dims
+
+    # Add geometry related metadata
+    meta["geometry_extracted"] = False
+    if num_dims == 1:
+        ds = ds.hermes.extract_1d_tokamak_geometry()
+        meta["geometry_extracted"] = True
+    else:
+        # Right now everything in the 2D function applies to 3D as well
+        ds = ds.hermes.extract_2d_tokamak_geometry()
+        meta["geometry_extracted"] = True
 
     # Add poloidal slices to metadata for easy access by selectors and other tools
     meta["poloidal_slices"] = get_poloidal_slices(ds)
     # Put back into dataset
-    ds.metadata = meta
-
-    print(ds.metadata["poloidal_slices"])
+    ds.attrs["metadata"] = meta
 
     return ds
 

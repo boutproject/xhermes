@@ -73,6 +73,10 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         - Dataset with the new geometry 
         """
         ds = self.data.squeeze() # Get rid of 1-length dimensions
+        m = ds.metadata
+
+        if m["geometry_extracted"]:
+            raise Exception("extract_1d_tokamak_geometry was called twice! Note: this is now done automatically upon loading")
 
         # Reconstruct grid position (pos, as in position) from dy
         dy = ds.coords["dy"].values
@@ -152,6 +156,9 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         
         ds = self.data.squeeze()
         m = ds.metadata
+
+        if m["geometry_extracted"]:
+            raise Exception("extract_2d_tokamak_geometry was called twice! Note: this is now done automatically upon loading")
         
         if "topology" not in m:
             raise Exception(
