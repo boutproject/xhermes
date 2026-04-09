@@ -5,7 +5,7 @@ import copy
 import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
-from .selectors import slice_poloidal
+from .selectors import get_poloidal_slices
 
 
 def open_hermesdataset(
@@ -366,17 +366,6 @@ def open_hermesdataset(
             components[component] = {"type": c_type, "options": c_opts}
         ds.attrs["components"] = components
         
-        # Identify dimensions
-        dims = list(ds.squeeze().dims)
-        if "t" in dims: dims.remove("t")
-        meta["dimensions"] = len(dims)
-        
-        # Identify species
-        meta["species"] = [x.split("P")[1] for x in ds.data_vars if x.startswith("P") and len(x) < 4]
-        meta["charged_species"] = [x for x in meta["species"] if "e" in x or "+" in x]
-        meta["ion_species"] = [x for x in meta["species"] if "+" in x]
-        meta["neutral_species"] = list(set(meta["species"]).difference(set(meta["charged_species"])))
-        
         # Prepare dictionary mapping recycling species pairs
         if "recycling" in ds.attrs["components"]:
             meta["recycling_pairs"] = dict()
@@ -385,6 +374,24 @@ def open_hermesdataset(
                     meta["recycling_pairs"][ion] = ds.options[ion]["recycle_as"]
                 else:
                     print(f"No recycling partner found for {ion}")
+
+    # Identify dimensions
+    dims = list(ds.squeeze().dims)
+    if "t" in dims: dims.remove("t")
+    meta["dimensions"] = len(dims)
+    
+    # Identify species
+    meta["species"] = [x.split("P")[1] for x in ds.data_vars if x.startswith("P") and len(x) < 4]
+    meta["charged_species"] = [x for x in meta["species"] if "e" in x or "+" in x]
+    meta["ion_species"] = [x for x in meta["species"] if "+" in x]
+    meta["neutral_species"] = list(set(meta["species"]).difference(set(meta["charged_species"])))
+
+    # Add poloidal slices to metadata for easy access by selectors and other tools
+    meta["poloidal_slices"] = get_poloidal_slices(ds)
+    # Put back into dataset
+    ds.metadata = meta
+
+    print(ds.metadata["poloidal_slices"])
 
     return ds
 
@@ -451,6 +458,8 @@ class HypnotoadGrid():
         
         # Add metadata for compatibility with Hermes-3 result dataset tools
         self._add_metadata()
+        self._add_poloidal_slices()
+        
                 
     def keys(self):
         return self._data.keys()
@@ -550,6 +559,9 @@ class HypnotoadGrid():
         m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
+
+    def _add_poloidal_slices(self):
+        self.metadata["poloidal_slices"] = get_poloidal_slices(self)
         
     def remove_guards(self):
         """
@@ -581,7 +593,7 @@ class HypnotoadGrid():
                             item = item[slice(2,-2), slice(None)]
                         
                         if m["MYG"] != 0:
-                            item = np.delete(item, slice_poloidal(new, "yguards"), axis = 1)
+                            item = np.delete(item, m["poloidal_slices"]["yguards"], axis = 1)
                         
                     # If 1D array matching radial size, remove radial guards
                     if m["MXG"] != 0:
@@ -591,7 +603,7 @@ class HypnotoadGrid():
                     # If 1D array matching poloidal size, remove poloidal guards
                     if m["MYG"] != 0:
                         if len(item.shape) == 1 and item.shape[0] == new["ny"]:
-                            item = np.delete(item, slice_poloidal(new, "yguards"))
+                            item = np.delete(item, m["poloidal_slices"]["yguards"], axis = 0)
                         
                     new[key] = item
                     

@@ -1,24 +1,22 @@
 import numpy as np
 
-def slice_poloidal(ds, name):
+def get_poloidal_slices(ds):
     """
     
     Returns poloidal indices/slices for named regions within a dataset.
 
     NOTES ON CONVENTION:
-    - The slices will always include the inner guard cells.
+    - The slices will always include the first guard cell.
     
     Parameters
     ----------
     ds : Dataset
         Either HypnotoadGrid or xBOUT/xHermes dataset.
-    name : str
-        Identifier of the poloidal region to select.
 
     Returns
     -------
-    int or slice
-        integer index or slice describing the required poloidal indices.
+    dict
+        Dictionary containing integer indices or slices describing the required poloidal regions.
     """
     
     
@@ -38,16 +36,6 @@ def slice_poloidal(ds, name):
     topology = m["topology"]
 
     index = {}
-
-    # Target selection
-    if "single-null" in topology:
-        if any(
-            [
-                x in name
-                for x in ["inner_lower_target", "inner_upper_target", "outer_lower_target", "outer_upper_target"]
-            ]
-        ):
-            raise ValueError(f"{name} region not present in {topology}")
 
     if "single-null" in topology:
 
@@ -186,28 +174,20 @@ def slice_poloidal(ds, name):
 
 
     # Guard selection
-    if "guard" in name:
-        if MYG > 0:
-            if "single-null" in topology:
-                index["yguards"] = np.r_[slice(None, MYG), slice(nyg - MYG, nyg)]
-
-            else:
-                index["yguards"] = np.r_[
-                    slice(None, MYG),
-                    slice(ny_innerg - MYG * 2, ny_innerg - MYG),
-                    slice(ny_innerg - MYG, ny_innerg),
-                    slice(nyg - MYG, nyg),
-                ]
+    if MYG > 0:
+        if "single-null" in topology:
+            index["yguards"] = np.r_[slice(None, MYG), slice(nyg - MYG, nyg)]
 
         else:
-            raise ValueError("Cannot select guards - no guards found in domain!")
+            index["yguards"] = np.r_[
+                slice(None, MYG),
+                slice(ny_innerg - MYG * 2, ny_innerg - MYG),
+                slice(ny_innerg - MYG, ny_innerg),
+                slice(nyg - MYG, nyg),
+            ]
 
-    if name not in index:
-        raise ValueError(
-            f"{name} region not recognised for poloidal selection in {topology} topology."
-        )
     
-    return index[name]
+    return index
     
 
 def slice_2d(ds, name):
@@ -243,10 +223,11 @@ def slice_2d(ds, name):
     ny_innerg = m["ny_innerg"]
     topology = m["topology"]
     
-    polidx = lambda x: slice_poloidal(ds, x)
+    i_pol = m["poloidal_slices"]
     slice_x_domain = slice(MXG, nxg - MXG)  # Domain X points (excl guards)
     slice_x_outer =  nxg - MXG - 1  # Last domain cell on SOL edge side
     slice_x_inner = MXG
+    
     
     
     slices = {}
@@ -260,8 +241,8 @@ def slice_2d(ds, name):
     if "single" in topology:
         
         slices["targets"] = (slice_x_domain,
-                             np.r_[polidx("inner_target"), 
-                                   polidx("outer_target")])
+                         np.r_[i_pol["inner_target"], 
+                             i_pol["outer_target"]])
         
         slices["core_boundary"] = (slice_x_inner,
                                    slice(j1_1g+1, j2_2g+1))
@@ -270,7 +251,7 @@ def slice_2d(ds, name):
         if "lower" in topology:
             slices["sol_boundary"] = (
                 slice_x_outer,
-                slice(polidx("inner_target"), polidx("outer_target"))
+                slice(i_pol["inner_target"], i_pol["outer_target"])
                 )
             slices["pfr_boundary"] = (
                 slice_x_inner,
@@ -284,7 +265,7 @@ def slice_2d(ds, name):
         elif "upper" in topology:
             slices["sol_boundary"] = (
                 slice_x_outer,
-                slice(polidx("outer_target"), polidx("inner_target"))
+                slice(i_pol["outer_target"], i_pol["inner_target"])
                 )
             slices["pfr_boundary"] = (
                 slice_x_inner,
@@ -301,29 +282,29 @@ def slice_2d(ds, name):
         
         slices["targets"] = (slice_x_domain, 
                              np.r_[
-                                polidx("inner_lower_target"), 
-                                polidx("inner_upper_target"),
-                                polidx("outer_upper_target"),
-                                polidx("outer_lower_target"),
+                                i_pol["inner_lower_target"], 
+                                i_pol["inner_upper_target"],
+                                i_pol["outer_upper_target"],
+                                i_pol["outer_lower_target"],
                                 ])
         
         slices["sol_inner_boundary"] = (
             slice_x_outer,
             np.r_[
-                slice(polidx("inner_lower_target"), polidx("inner_upper_target")+1),
+                slice(i_pol["inner_lower_target"], i_pol["inner_upper_target"]+1),
             ])
         
         slices["sol_outer_boundary"] = (
             slice_x_outer,
             np.r_[
-                slice(polidx("outer_upper_target"), polidx("outer_lower_target")+1),
+                slice(i_pol["outer_upper_target"], i_pol["outer_lower_target"]+1),
             ])
         
         slices["sol_boundary"] = (
             slice_x_outer,
             np.r_[
-                slice(polidx("inner_lower_target"), polidx("inner_upper_target")+1),
-                slice(polidx("outer_upper_target"), polidx("outer_lower_target")+1),
+                slice(i_pol["inner_lower_target"], i_pol["inner_upper_target"]+1),
+                slice(i_pol["outer_upper_target"], i_pol["outer_lower_target"]+1),
             ])
         
         slices["core_boundary"] = (slice_x_inner,
@@ -344,11 +325,8 @@ def slice_2d(ds, name):
         raise ValueError(f"Unknown topology: {topology}")
     
     # Poloidal selections
-    if name in ["inner_target", "outer_target",
-                "inner_lower_target", "inner_upper_target",
-                "outer_lower_target", "outer_upper_target",
-                "yguards"]:
-        
-        slices[name] = (slice_x_domain, slice_poloidal(ds, name))
+    if name in m["poloidal_slices"]:
+        slices[name] = (slice_x_domain, m["poloidal_slices"][name])
+   
     
     return slices[name]

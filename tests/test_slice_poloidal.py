@@ -152,6 +152,7 @@ def test_selectors(example_grids):
                     continue
                 print(f"{grid_name} ", end="")
                 ds = xhermes.HypnotoadGrid(path)
+                m = ds.metadata
 
                 # Generate plots for visual check
                 if plot:
@@ -159,14 +160,14 @@ def test_selectors(example_grids):
                     ax1 = fig.add_subplot(gs[row, 1])
                     xhermes.plot_selection(
                         ds,
-                        selection=(slice(None), xhermes.slice_poloidal(ds, selection)),
+                        selection=(slice(None), m["poloidal_slices"][selection]),
                         axes=[ax0, ax1]
                     )
                     ax0.set_title(f"{grid_name}\nLogical")
                     ax1.set_title(f"{grid_name}\nPoloidal")
                         
                 # Generate test data and compare to expected
-                R_test = ds["Rxy"][slice(None), xhermes.slice_poloidal(ds, selection)]
+                R_test = ds["Rxy"][slice(None), m["poloidal_slices"][selection]]
 
                 if generate_data:
                     if selection not in Rcoords:
