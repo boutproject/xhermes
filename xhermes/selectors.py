@@ -190,7 +190,7 @@ def get_poloidal_slices(ds):
     return index
     
 
-def slice_2d(ds, name):
+def slice_2d(ds, name, guards = False):
     """
     
     Return a tuple of radial and poloidal indices/slices for regions within a dataset.
@@ -224,7 +224,10 @@ def slice_2d(ds, name):
     topology = m["topology"]
     
     i_pol = m["poloidal_slices"]
-    slice_x_domain = slice(MXG, nxg - MXG)  # Domain X points (excl guards)
+    if guards:
+        slice_x_domain = slice(None, None)
+    else:
+        slice_x_domain = slice(MXG, nxg - MXG)  # Domain X points (excl guards)
     slice_x_outer =  nxg - MXG - 1  # Last domain cell on SOL edge side
     slice_x_inner = MXG
     
