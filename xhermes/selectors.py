@@ -114,6 +114,9 @@ def get_poloidal_slices(ds):
             index["inner_divertor"] = slice(j2_2g+1, nyg-MYG_half)
             index["outer_divertor"] = slice(MYG_half, j1_1g+1)
 
+            index["inner_pfr"] = index["inner_divertor"]
+            index["outer_pfr"] = index["outer_divertor"]
+
             index["pfr"] = np.r_[index["inner_divertor"], index["outer_divertor"]]
 
     
@@ -152,11 +155,24 @@ def get_poloidal_slices(ds):
         index["outer_upper_sol"] = slice(ny_innerg-MYG_half, index["outer_lower_midplane"])
         index["outer_lower_sol"] = slice(index["outer_lower_midplane"], nyg - MYG_half)
 
+        # SOL upstream region (midplane to X-point)
+        index["inner_lower_upstream"] = slice(index["inner_lower_xpoint"]+1, index["inner_lower_midplane"]+1)
+        index["inner_upper_upstream"] = slice(index["inner_upper_midplane"], index["inner_upper_xpoint"])
+        index["outer_upper_upstream"] = slice(index["outer_upper_xpoint"]+1, index["outer_upper_midplane"]+1)
+        index["outer_lower_upstream"] = slice(index["outer_lower_midplane"], index["outer_lower_xpoint"])
+
+        # SOL upstream region (midplane to X-point) with an extra cell beyond the midplane
+        index["inner_lower_upstream_extra"] = slice(index["inner_lower_xpoint"]+1, index["inner_lower_midplane"]+2)
+        index["inner_upper_upstream_extra"] = slice(index["inner_upper_midplane"]-1, index["inner_upper_xpoint"])
+        index["outer_upper_upstream_extra"] = slice(index["outer_upper_xpoint"]+1, index["outer_upper_midplane"]+2)
+        index["outer_lower_upstream_extra"] = slice(index["outer_lower_midplane"]-1, index["outer_lower_xpoint"])
+
         # SOL starting at the first cell centre after the X-point
         index["inner_lower_divertor"] = slice(MYG_half, j1_1g+1)
         index["inner_upper_divertor"] = slice(j2_1g + 1, ny_innerg - MYG - MYG_half)
         index["outer_upper_divertor"] = slice(ny_innerg-MYG_half, j1_2g+1)
         index["outer_lower_divertor"] = slice(j2_2g + 1, nyg - MYG_half)
+
 
         index["inner_sol"] = slice(MYG_half, ny_innerg - MYG - MYG_half)
         index["outer_sol"] = slice(ny_innerg - MYG_half, nyg - MYG_half)
@@ -168,8 +184,13 @@ def get_poloidal_slices(ds):
         index["outer_core"] = slice(j1_2g+1, j2_2g+1)
         index["core"] = np.r_[index["inner_core"], index["outer_core"]]
 
+        index["inner_lower_pfr"] = index["inner_lower_divertor"]
+        index["inner_upper_pfr"] = index["inner_upper_divertor"]
+        index["outer_lower_pfr"] = index["outer_lower_divertor"]
+        index["outer_upper_pfr"] = index["outer_upper_divertor"]
+
         index["lower_pfr"] = np.r_[index["inner_lower_divertor"], index["outer_lower_divertor"]]
-        index["upper_pfr"] = np.r_[index["inner_upper_divertor"], index["outer_upper_divertor"]]
+        index["upper_pfr"] = np.r_[index["outer_upper_divertor"], index["inner_upper_divertor"]]
         index["pfr"] = np.r_[index["lower_pfr"], index["upper_pfr"]]
 
 
