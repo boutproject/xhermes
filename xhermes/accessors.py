@@ -14,7 +14,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         super().__init__(ds)
         
     
-    def select_region(self, name):
+    def select_region(self, name, guards = False):
         """
         Select a radial/poloidal region from the dataset
         
@@ -22,13 +22,15 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ----------
         name : str
             Region name to select. Must be compatible with `slice_2d`.
+        guards : bool, optional
+            Whether to include guard cells in the selection. Default is False.
         
         Returns
         -------
         xarray.Dataset
             Dataset with data selected for the specified region
         """
-        selection = slice_2d(self.data, name)
+        selection = slice_2d(self.data, name, guards=guards)
         return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
@@ -73,6 +75,10 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         - Dataset with the new geometry 
         """
         ds = self.data.squeeze() # Get rid of 1-length dimensions
+        m = ds.metadata
+
+        if m["geometry_extracted"]:
+            raise Exception("extract_1d_tokamak_geometry was called twice! Note: this is now done automatically upon loading")
 
         # Reconstruct grid position (pos, as in position) from dy
         dy = ds.coords["dy"].values
@@ -152,6 +158,9 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         
         ds = self.data.squeeze()
         m = ds.metadata
+
+        if m["geometry_extracted"]:
+            raise Exception("extract_2d_tokamak_geometry was called twice! Note: this is now done automatically upon loading")
         
         if "topology" not in m:
             raise Exception(
@@ -224,7 +233,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds["dr"].attrs.update({
             "conversion" : 1,
             "units" : "m",
-            "standard_name" : "radial length",
+            "standard_name" : "radial cell length",
             "long_name" : "Length of cell in the radial direction",
             "source" : "xHermes"})
         
@@ -232,16 +241,24 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds["hthe"].attrs.update({
             "conversion" : 1,
             "units" : "m/radian",
-            "standard_name" : "h_theta: poloidal arc length per radian",
-            "long_name" : "h_theta: poloidal arc length per radian",
+            "standard_name" : "h_theta: poloidal arc cell length per radian",
+            "long_name" : "h_theta: poloidal arc cell length per radian",
             "source" : "xHermes"})
         
-        ds["dl"] = (["x", "theta"], ds["dy"].data * ds["hthe"].data)    # poloidal arc length
-        ds["dl"].attrs.update({
+        ds["dpol"] = (["x", "theta"], ds["dy"].data * ds["hthe"].data)   # Poloidal cell length
+        ds["dpol"].attrs.update({
             "conversion" : 1,
             "units" : "m",
-            "standard_name" : "poloidal arc length",
-            "long_name" : "Poloidal arc length",
+            "standard_name" : "Poloidal cell length",
+            "long_name" : "Poloidal cell length",
+            "source" : "xHermes"})
+        
+        ds["dtor"] = (["x", "theta"], ds["dz"].data * np.sqrt(ds["g_33"].data))   # Toroidal cell length
+        ds["dtor"].attrs.update({
+            "conversion" : 1,
+            "units" : "m",
+            "standard_name" : "Toroidal cell length",
+            "long_name" : "Toroidal cell length",
             "source" : "xHermes"})
         
         return ds
@@ -273,7 +290,7 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
             
         return ds
         
-    def select_region(self, name):
+    def select_region(self, name, guards = False):
         """
         Select a radial/poloidal region from the DataArray
         
@@ -281,13 +298,15 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
         ----------
         name : str
             Region name to select. Must be compatible with `slice_2d`.
+        guards : bool, optional
+            Whether to include guard cells in the selection. Default is False.
         
         Returns
         -------
         xarray.DataArray
             DataArray with data selected for the specified region
         """
-        selection = slice_2d(self.data, name)
+        selection = slice_2d(self.data, name, guards = guards)
         return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
