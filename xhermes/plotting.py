@@ -75,7 +75,7 @@ def plot_rz_grid(
 
     m = ds.metadata
 
-    if ax == None:
+    if ax is None:
         fig, ax = plt.subplots()
 
     # Marker size for selection plot
@@ -165,7 +165,7 @@ def plot_rz_grid(
                 color_idx[m["ixseps2"], :] = 7
 
             # Plot selection
-            if selection != None:
+            if selection is not None:
                 color_idx[selection] = 8
                 ax.plot(
                     ds[Rname][selection],
@@ -240,7 +240,7 @@ def plot_rz_grid(
         if "single-null" not in m["topology"]:
             color[m["ixseps2"], :] = 7
 
-        if selection != None:
+        if selection is not None:
             color[selection] = 8
             ax.plot(
                 Y[selection],

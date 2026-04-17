@@ -20,14 +20,7 @@ def slice_poloidal(ds, name):
     """
 
     m = ds.metadata
-    # TODO: use j1_1g etc from xBOUT once it's implemented there
-    j1_1g = m["jyseps1_1g"]
-    j1_2g = m["jyseps1_2g"]
-    j2_1g = m["jyseps2_1g"]
-    j2_2g = m["jyseps2_2g"]
-    MXG = m["MXG"]
     MYG = m["MYG"]
-    nxg = m["nxg"]
     nyg = m["nyg"]
     ny_innerg = m["ny_innerg"]
     topology = m["topology"]
@@ -110,7 +103,9 @@ def slice_2d(ds, name):
     ny_innerg = m["ny_innerg"]
     topology = m["topology"]
 
-    polidx = lambda x: slice_poloidal(ds, x)
+    def polidx(x):
+        return slice_poloidal(ds, x)
+
     slice_x_domain = slice(MXG, nxg - MXG)  # Domain X points (excl guards)
     slice_x_outer = nxg - MXG - 1  # Last domain cell on SOL edge side
     slice_x_inner = MXG

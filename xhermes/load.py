@@ -1,7 +1,6 @@
 from xbout import open_boutdataset
 
 import os
-import copy
 import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
@@ -575,7 +574,7 @@ class HypnotoadGrid:
         for key in new.keys():
             item = new[key]
 
-            if type(item) == np.ma.core.MaskedArray:
+            if isinstance(item, np.ma.core.MaskedArray):
                 if item.shape != ():
                     # If 2D array, remove radial and poloidal guards
                     if len(item.shape) == 2:

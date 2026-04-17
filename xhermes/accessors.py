@@ -297,7 +297,7 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
 
         # Clear target guards if they exist
         if self.data.metadata["MYG"] > 0:
-            yguards = slice_2d(self.data, f"yguards")
+            yguards = slice_2d(self.data, "yguards")
             ds[{"x": yguards[0], "theta": yguards[1]}] = np.nan
 
         return ds

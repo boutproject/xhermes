@@ -2,7 +2,6 @@
 
 import xhermes
 import pytest
-import numpy as np
 import numpy.testing as npt
 
 from urllib.request import urlretrieve
