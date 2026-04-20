@@ -162,7 +162,7 @@ def open_hermesdataset(
                     "units": "1",
                     "conversion": 1,
                     "standard_name": varname,
-                    long_name: f"{varname} metric coefficient",
+                    "long_name": f"{varname} metric coefficient",
                 })
             elif varname == "J":
                 da.attrs.update({
