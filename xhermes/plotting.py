@@ -3,10 +3,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from .selectors import slice_2d
 
-def plot_selection(ds, selection=None, region=None, dpi = 150, title = "", axes = None):
+
+def plot_selection(ds, selection=None, region=None, dpi=150, title="", axes=None):
     """
     Visualises selected grid region over a logical and poloidal grid plot
-    
+
     Parameters
     ds : dict-like
         Either a Hermes-3 results dataset or a HypnotoadGrid object. Needs to have
@@ -14,10 +15,10 @@ def plot_selection(ds, selection=None, region=None, dpi = 150, title = "", axes 
         as keys.
     selection : tuple, optional
         Two-element tuple of int or slice specifying the row and column
-        selectors, compatible with NumPy 2D indexing. 
+        selectors, compatible with NumPy 2D indexing.
         Use xhermes.slice_2d to generate one from a region name.
     region : str, optional
-        Name of the region to plot to pass to xhermes.slice_2d to generate the selection. 
+        Name of the region to plot to pass to xhermes.slice_2d to generate the selection.
         Ignored if selection is provided.
     dpi : int, optional
         Dots per inch for the figure. Higher values give better quality but larger file size.
@@ -28,36 +29,40 @@ def plot_selection(ds, selection=None, region=None, dpi = 150, title = "", axes 
         selection = slice_2d(ds, region)
     elif selection is None and region is None:
         raise ValueError("Either selection or region must be provided")
-    
+
     if axes is None:
-        fig, axes = plt.subplots(1,2, figsize = (8,6), dpi = dpi)
+        fig, axes = plt.subplots(1, 2, figsize=(8, 6), dpi=dpi)
         own_fig = True
     else:
         fig = axes[0].get_figure()
         own_fig = False
 
-    plot_grid(ds, mode = "logical", selection = selection, ax = axes[0])
-    plot_grid(ds, mode = "poloidal", selection = selection, ax = axes[1], legend = False)
+    plot_grid(ds, mode="logical", selection=selection, ax=axes[0])
+    plot_grid(ds, mode="poloidal", selection=selection, ax=axes[1], legend=False)
     axes[0].set_title("Logical grid")
     axes[1].set_title("Poloidal grid")
     if own_fig:
         fig.tight_layout()
-        fig.suptitle(title, y = 1.03)
+        fig.suptitle(title, y=1.03)
         plt.show()
-    
 
-def plot_grid(ds, 
-                selection = None,
-                mode = "logical",
-                ax = None, 
-                xlim = (None,None), ylim = (None,None),
-                plot_region_boundaries = True,
-                legend = True,
-                title = "", linecolor = "grey", linewidth = 0.2):
-    
+
+def plot_grid(
+    ds,
+    selection=None,
+    mode="logical",
+    ax=None,
+    xlim=(None, None),
+    ylim=(None, None),
+    plot_region_boundaries=True,
+    legend=True,
+    title="",
+    linecolor="grey",
+    linewidth=0.2,
+):
     """
     Create a 2D polygon plot of a Hermes-3 grid
-    
+
     Parameters
     ----------
     ds : dict-like
@@ -79,25 +84,37 @@ def plot_grid(ds,
     linewidth : float, optional
         Width of the grid lines. Default is 0.3.
     """
-    
+
     # If reading a results dataset with time, select last time slice
     if hasattr(ds, "coords"):
         if "t" in ds.sizes:
             ds = ds.isel(t=-1)
-    
+
     m = ds.metadata
-    
+
     if ax == None:
         fig, ax = plt.subplots()
-        
+
     # Marker size for selection plot
     ms_selection = 3
 
     ax.set_title(title)
-    
-    cmap = mpl.colors.ListedColormap(["white", "coral", "limegreen", "skyblue", "violet", "navy", "grey", "darkslategrey", "deeppink"])
+
+    cmap = mpl.colors.ListedColormap(
+        [
+            "white",
+            "coral",
+            "limegreen",
+            "skyblue",
+            "violet",
+            "navy",
+            "grey",
+            "darkslategrey",
+            "deeppink",
+        ]
+    )
     norm = mpl.colors.BoundaryNorm(np.arange(-0.5, cmap.N + 0.5, 1), cmap.N)
-    
+
     # Handle different naming conventions in grid and xBOUT dataset
     if "Rxy" in ds.keys():
         Rname = "Rxy"
@@ -107,11 +124,11 @@ def plot_grid(ds,
         Zname = "Z"
     else:
         raise Exception("RZ coordinates not found in dataset")
-    
+
     if mode == "poloidal":
         if "Rxy_lower_right_corners" not in ds.keys():
             raise Exception("Cell corners not present in mesh, cannot do polygon plot")
-    
+
         else:
             r_nodes = [
                 Rname,
@@ -151,10 +168,9 @@ def plot_grid(ds,
                     facecolor=None,
                 )
                 patches.append(p)
-            
 
         color_idx = np.zeros((Nx, Ny), dtype=int)
-    
+
         if plot_region_boundaries:
             color_idx[:, m["jyseps1_1g"]] = 1
             color_idx[:, m["jyseps1_2g"]] = 2
@@ -164,20 +180,45 @@ def plot_grid(ds,
             color_idx[m["ixseps1"], :] = 6
             if "single-null" not in m["topology"]:
                 color_idx[m["ixseps2"], :] = 7
-            
+
             # Plot selection: color patches deeppink in RZ mode
             if selection != None:
                 color_idx[selection] = 8
-                ax.plot(ds[Rname][selection], ds[Zname][selection], 
-                        label = "selection", lw = 0, alpha = 1, ms = ms_selection/5, marker = "o", c = cmap(8), 
-                        markeredgecolor = "yellow", zorder = 100)
-            
-            ax.plot(ds[Rname][m["ixseps1"],:], ds[Zname][m["ixseps1"],:], 
-                    label = "ixseps1", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(5))
-            
+                ax.plot(
+                    ds[Rname][selection],
+                    ds[Zname][selection],
+                    label="selection",
+                    lw=0,
+                    alpha=1,
+                    ms=ms_selection / 5,
+                    marker="o",
+                    c=cmap(8),
+                    markeredgecolor="yellow",
+                    zorder=100,
+                )
+
+            ax.plot(
+                ds[Rname][m["ixseps1"], :],
+                ds[Zname][m["ixseps1"], :],
+                label="ixseps1",
+                lw=0,
+                alpha=1,
+                ms=2,
+                marker="o",
+                c=cmap(5),
+            )
+
             if "single-null" not in m["topology"]:
-                ax.plot(ds[Rname][m["ixseps2"],:], ds[Zname][m["ixseps2"],:], 
-                        label = "ixseps2", lw = 0, alpha = 1, ms = 2, marker = "o", c = cmap(6))
+                ax.plot(
+                    ds[Rname][m["ixseps2"], :],
+                    ds[Zname][m["ixseps2"], :],
+                    label="ixseps2",
+                    lw=0,
+                    alpha=1,
+                    ms=2,
+                    marker="o",
+                    c=cmap(6),
+                )
 
         colors_flat = color_idx.flatten()
 
@@ -199,15 +240,14 @@ def plot_grid(ds,
         ax.set_xlim(cell_r.min(), cell_r.max())
         ax.set_xlabel("R [m]")
         ax.set_ylabel("Z [m]")
-        
+
     elif mode == "logical":
         x = np.array(range(m["nxg"]))
         y = range(m["nyg"])
-        
 
         X, Y = np.meshgrid(y, x)
         color = np.zeros_like(X)
-        
+
         color[:, m["jyseps1_1g"]] = 1
         color[:, m["jyseps1_2g"]] = 2
         color[:, m["jyseps2_1g"]] = 3
@@ -216,38 +256,62 @@ def plot_grid(ds,
         color[m["ixseps1"], :] = 6
         if "single-null" not in m["topology"]:
             color[m["ixseps2"], :] = 7
-        
+
         if selection != None:
-            ax.plot(Y[selection], X[selection], 
-                        label = "selection", lw = 0, alpha = 1, ms = ms_selection, marker = "o", c = cmap(8), 
-                        markeredgecolor = "yellow", zorder = 100)
-            
-        ax.pcolormesh(Y, X, color, cmap = cmap, norm = norm, linewidth = 0.1, antialiased = True, color = "k")
+            ax.plot(
+                Y[selection],
+                X[selection],
+                label="selection",
+                lw=0,
+                alpha=1,
+                ms=ms_selection,
+                marker="o",
+                c=cmap(8),
+                markeredgecolor="yellow",
+                zorder=100,
+            )
+
+        ax.pcolormesh(
+            Y,
+            X,
+            color,
+            cmap=cmap,
+            norm=norm,
+            linewidth=0.1,
+            antialiased=True,
+            color="k",
+        )
 
         ax.set_xlabel("Y index")
         ax.set_ylabel("X index")
-        
 
     legend_handles = [
-        mpl.lines.Line2D([0], [0], label = "jyseps1_1g", color = cmap(1)),
-        mpl.lines.Line2D([0], [0], label = "jyseps1_2g", color = cmap(2)),
-        mpl.lines.Line2D([0], [0], label = "jyseps2_1g", color = cmap(3)),
-        mpl.lines.Line2D([0], [0], label = "jyseps2_2g", color = cmap(4)),
-        mpl.lines.Line2D([0], [0], label = "ny_innerg", color = cmap(5)),
-        mpl.lines.Line2D([0], [0], label = "ixseps1", color = cmap(6)),
-        mpl.lines.Line2D([0], [0], label = "ixseps2", color = cmap(7)),
-        mpl.lines.Line2D([0], [0], label = "Selection", color = cmap(8), marker = "o", markeredgecolor = "yellow"),
+        mpl.lines.Line2D([0], [0], label="jyseps1_1g", color=cmap(1)),
+        mpl.lines.Line2D([0], [0], label="jyseps1_2g", color=cmap(2)),
+        mpl.lines.Line2D([0], [0], label="jyseps2_1g", color=cmap(3)),
+        mpl.lines.Line2D([0], [0], label="jyseps2_2g", color=cmap(4)),
+        mpl.lines.Line2D([0], [0], label="ny_innerg", color=cmap(5)),
+        mpl.lines.Line2D([0], [0], label="ixseps1", color=cmap(6)),
+        mpl.lines.Line2D([0], [0], label="ixseps2", color=cmap(7)),
+        mpl.lines.Line2D(
+            [0],
+            [0],
+            label="Selection",
+            color=cmap(8),
+            marker="o",
+            markeredgecolor="yellow",
+        ),
     ]
-    
+
     if legend:
-        ax.legend(handles = legend_handles, loc = "best", ncols = 2, fontsize = "xx-small")
-    
+        ax.legend(handles=legend_handles, loc="best", ncols=2, fontsize="xx-small")
+
     ax.set_axisbelow(True)
     ax.grid(False)
 
-    if xlim != (None,None):
+    if xlim != (None, None):
         ax.set_xlim(xlim)
-    if ylim != (None,None):
+    if ylim != (None, None):
         ax.set_ylim(ylim)
-        
+
     return ax
