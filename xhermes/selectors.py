@@ -29,12 +29,10 @@ def slice_poloidal(ds, name):
 
     # Target selection
     if "single-null" in topology:
-        if any(
-            [
-                x in name
-                for x in ["inner_lower", "inner_upper", "outer_lower", "outer_upper"]
-            ]
-        ):
+        if any([
+            x in name
+            for x in ["inner_lower", "inner_upper", "outer_lower", "outer_upper"]
+        ]):
             raise ValueError(f"{name} region not present in {topology}")
 
     if "single-null" in topology:

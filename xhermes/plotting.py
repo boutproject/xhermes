@@ -83,19 +83,17 @@ def plot_rz_grid(
 
     ax.set_title(title)
 
-    cmap = mpl.colors.ListedColormap(
-        [
-            "white",
-            "coral",
-            "limegreen",
-            "skyblue",
-            "violet",
-            "navy",
-            "grey",
-            "darkslategrey",
-            "deeppink",
-        ]
-    )
+    cmap = mpl.colors.ListedColormap([
+        "white",
+        "coral",
+        "limegreen",
+        "skyblue",
+        "violet",
+        "navy",
+        "grey",
+        "darkslategrey",
+        "deeppink",
+    ])
     norm = mpl.colors.BoundaryNorm(np.arange(-0.5, cmap.N + 0.5, 1), cmap.N)
 
     # Handle different naming conventions in grid and xBOUT dataset
@@ -143,7 +141,8 @@ def plot_rz_grid(
         for i in range(Nx):
             for j in range(Ny):
                 p = mpl.patches.Polygon(
-                    np.concatenate((cell_r[i][j][tuple(idx)], cell_z[i][j][tuple(idx)]))
+                    np
+                    .concatenate((cell_r[i][j][tuple(idx)], cell_z[i][j][tuple(idx)]))
                     .reshape(2, 5)
                     .T,
                     fill=False,
