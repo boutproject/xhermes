@@ -1994,7 +1994,6 @@ def example_grids(tmp_path_factory):
     # the decorator makes sure the files are only used for this session
     # and don't break stuff
     tmp = tmp_path_factory.mktemp("hypnotoad")
-    zip_path = tmp / "Hypnotoad_examples.zip"
     url = "https://zenodo.org/records/17966926/files/Hypnotoad_examples.zip"
     urlretrieve(url, "Hypnotoad_examples.zip")
     with zipfile.ZipFile("Hypnotoad_examples.zip", "r") as z:
