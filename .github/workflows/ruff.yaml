@@ -2,7 +2,8 @@ name: Linting
 on: [pull_request, push]
 
 jobs:
-  dependency-review:
+  ruff-checks:
+    name: "Ruff Checks"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
