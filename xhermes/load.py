@@ -2,6 +2,7 @@ from xbout import open_boutdataset
 
 import os
 import numpy as np
+import re
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
 from .selectors import slice_poloidal
@@ -64,6 +65,10 @@ def open_hermesdataset(
     # SI values
     Mp = 1.67e-27  # Proton mass
     e = 1.602e-19  # Coulombs
+
+    re_gxx = re.compile(r"g\d\d")
+    re_g_xx = re.compile(r"g_\d\d")
+    re_dx = re.compile(r"d[xyz]")
 
     for varname in list(ds.data_vars) + list(ds.coords):
         da = ds[varname]
@@ -134,151 +139,185 @@ def open_hermesdataset(
                 # Don't know what this is
                 da.attrs["units_type"] = "unknown"
 
-        # Coordinates
-        if varname == "dy":
-            # Poloidal cell angular width
-            da.attrs.update({
-                "units": "radian",
-                "conversion": 1,
-                "standard_name": "poloidal cell angular width",
-                "long_name": "Poloidal cell angular width",
-            })
-        elif varname == "dx":
-            # Radial cell width
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "Wb",
-                "conversion": rho_s0**2 * Bnorm,
-                "standard_name": "radial cell width",
-                "long_name": "Radial cell width in flux space",
-            })
-        elif varname == "dz":
-            # Radial cell width
-            da.attrs.update({
-                "units_type": "SI",
-                "units": "radian",
-                "conversion": 1,
-                "standard_name": "toroidal cell angular width",
-                "long_name": "Poloidal cell angular width",
-            })
-        elif varname == "J":
-            # Jacobian
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m/radian T",
-                "conversion": rho_s0 / Bnorm,
-                "standard_name": "Jacobian",
-                "long_name": "Jacobian to translate from flux to cylindrical coordinates in real space",
-            })
-        elif varname == "g11":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T2 m2",
-                "conversion": (Bnorm * rho_s0) ** 2,
-                "standard_name": "g11",
-                "long_name": "g11 term in the metric tensor",
-            })
-        elif varname == "g22":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m-2",
-                "conversion": 1 / (rho_s0) ** 2,
-                "standard_name": "g22",
-                "long_name": "g22 term in the metric tensor",
-            })
-        elif varname == "g33":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m-2",
-                "conversion": 1 / (rho_s0) ** 2,
-                "standard_name": "g33",
-                "long_name": "g33 term in the metric tensor",
-            })
-        elif varname == "g12":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T",
-                "conversion": Bnorm,
-                "standard_name": "g12",
-                "long_name": "g12 term in the metric tensor",
-            })
-        elif varname == "g13":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T",
-                "conversion": Bnorm,
-                "standard_name": "g13",
-                "long_name": "g13 term in the metric tensor",
-            })
-        elif varname == "g23":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m-2",
-                "conversion": 1 / (rho_s0) ** 2,
-                "standard_name": "g23",
-                "long_name": "g23 term in the metric tensor",
-            })
-        elif varname == "g_11":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T-2m-2",
-                "conversion": 1 / (Bnorm * rho_s0) ** 2,
-                "standard_name": "g_11",
-                "long_name": "g_11 term in the metric tensor",
-            })
-        elif varname == "g_22":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m2",
-                "conversion": (rho_s0) ** 2,
-                "standard_name": "g_22",
-                "long_name": "g_22 term in the metric tensor",
-            })
-        elif varname == "g_33":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m2",
-                "conversion": (rho_s0) ** 2,
-                "standard_name": "g_33",
-                "long_name": "g_33 term in the metric tensor",
-            })
-        elif varname == "g_12":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T-1",
-                "conversion": 1 / Bnorm,
-                "standard_name": "g_12",
-                "long_name": "g_12 term in the metric tensor",
-            })
-        elif varname == "g_13":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T-1",
-                "conversion": 1 / Bnorm,
-                "standard_name": "g_13",
-                "long_name": "g_13 term in the metric tensor",
-            })
-        elif varname == "g_23":
-            # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m2",
-                "conversion": (rho_s0) ** 2,
-                "standard_name": "g_23",
-                "long_name": "g_23 term in the metric tensor",
-            })
-        elif varname == "t" or varname == "t_array":
+        if ds.geometry == "fci":
+            if re_gxx.match(varname):
+                da.attrs.update({
+                    "units_type": "SI",
+                    "units": "1/m²",
+                    "conversion": rho_s0**-2,
+                    "standard_name": varname,
+                    "long_name": f"{varname} term in the metric tensor",
+                })
+            elif re_g_xx.matches(varname):
+                da.attrs.update({
+                    "units_type": "SI",
+                    "units": "m²",
+                    "conversion": rho_s0**2,
+                    "standard_name": varname,
+                    "long_name": f"{varname} term in the metric tensor",
+                })
+            elif re_dx.matches(varname):
+                da.attrs.update({
+                    "units_type": "SI",
+                    "units": "1",
+                    "conversion": 1,
+                    "standard_name": varname,
+                    "long_name": f"{varname} metric coefficient",
+                })
+            elif varname == "J":
+                da.attrs.update({
+                    "units_type": "SI",
+                    "units": "m³",
+                    "conversion": rho_s0**3,
+                    "standard_name": "Jacobian",
+                    "long_name": "Jacobian to translate from flux to cylindrical coordinates in real space",
+                })
+        else:
+            # Coordinates
+            if varname == "dy":
+                # Poloidal cell angular width
+                da.attrs.update({
+                    "units": "radian",
+                    "conversion": 1,
+                    "standard_name": "poloidal cell angular width",
+                    "long_name": "Poloidal cell angular width",
+                })
+            elif varname == "dx":
+                # Radial cell width
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "Wb",
+                    "conversion": rho_s0**2 * Bnorm,
+                    "standard_name": "radial cell width",
+                    "long_name": "Radial cell width in flux space",
+                })
+            elif varname == "dz":
+                # Radial cell width
+                da.attrs.update({
+                    "units_type": "SI",
+                    "units": "radian",
+                    "conversion": 1,
+                    "standard_name": "toroidal cell angular width",
+                    "long_name": "Poloidal cell angular width",
+                })
+            elif varname == "J":
+                # Jacobian
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "m/radian T",
+                    "conversion": rho_s0 / Bnorm,
+                    "standard_name": "Jacobian",
+                    "long_name": "Jacobian to translate from flux to cylindrical coordinates in real space",
+                })
+            elif varname == "g11":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "T2 m2",
+                    "conversion": (Bnorm * rho_s0) ** 2,
+                    "standard_name": "g11",
+                    "long_name": "g11 term in the metric tensor",
+                })
+            elif varname == "g22":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "m-2",
+                    "conversion": 1 / (rho_s0) ** 2,
+                    "standard_name": "g22",
+                    "long_name": "g22 term in the metric tensor",
+                })
+            elif varname == "g33":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "m-2",
+                    "conversion": 1 / (rho_s0) ** 2,
+                    "standard_name": "g33",
+                    "long_name": "g33 term in the metric tensor",
+                })
+            elif varname == "g12":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "T",
+                    "conversion": Bnorm,
+                    "standard_name": "g12",
+                    "long_name": "g12 term in the metric tensor",
+                })
+            elif varname == "g13":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "T",
+                    "conversion": Bnorm,
+                    "standard_name": "g13",
+                    "long_name": "g13 term in the metric tensor",
+                })
+            elif varname == "g23":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "m-2",
+                    "conversion": 1 / (rho_s0) ** 2,
+                    "standard_name": "g23",
+                    "long_name": "g23 term in the metric tensor",
+                })
+            elif varname == "g_11":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "T-2m-2",
+                    "conversion": 1 / (Bnorm * rho_s0) ** 2,
+                    "standard_name": "g_11",
+                    "long_name": "g_11 term in the metric tensor",
+                })
+            elif varname == "g_22":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "m2",
+                    "conversion": (rho_s0) ** 2,
+                    "standard_name": "g_22",
+                    "long_name": "g_22 term in the metric tensor",
+                })
+            elif varname == "g_33":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "m2",
+                    "conversion": (rho_s0) ** 2,
+                    "standard_name": "g_33",
+                    "long_name": "g_33 term in the metric tensor",
+                })
+            elif varname == "g_12":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "T-1",
+                    "conversion": 1 / Bnorm,
+                    "standard_name": "g_12",
+                    "long_name": "g_12 term in the metric tensor",
+                })
+            elif varname == "g_13":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "T-1",
+                    "conversion": 1 / Bnorm,
+                    "standard_name": "g_13",
+                    "long_name": "g_13 term in the metric tensor",
+                })
+            elif varname == "g_23":
+                # Metric tensor term
+                da.attrs.update({
+                    "units_type": "hermes",
+                    "units": "m2",
+                    "conversion": (rho_s0) ** 2,
+                    "standard_name": "g_23",
+                    "long_name": "g_23 term in the metric tensor",
+                })
+        if varname == "t" or varname == "t_array":
             # Time
             da.attrs.update({
                 "units_type": "hermes",
