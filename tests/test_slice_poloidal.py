@@ -41,8 +41,8 @@ def example_grids(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("hypnotoad")
     zip_path = tmp / "Hypnotoad_examples.zip"
     url = "https://zenodo.org/records/17966926/files/Hypnotoad_examples.zip"
-    urlretrieve(url, "Hypnotoad_examples.zip")
-    with zipfile.ZipFile("Hypnotoad_examples.zip", "r") as z:
+    urlretrieve(url, zip_path)
+    with zipfile.ZipFile(zip_path, "r") as z:
         z.extractall(tmp)
 
     return tmp
@@ -65,6 +65,10 @@ poloidal_selections["sn"] = [
     "outer_divertor",
     "pfr",
     "yguards",
+    "inner_lower_midplane",
+    "inner_upper_midplane",
+    "outer_lower_midplane",
+    "outer_upper_midplane"
 ]
 
 poloidal_selections["dn"] = [
@@ -80,6 +84,14 @@ poloidal_selections["dn"] = [
     "inner_upper_xpoint",
     "outer_upper_xpoint",
     "outer_lower_xpoint",
+    "inner_lower_upstream",
+    "inner_upper_upstream",
+    "outer_upper_upstream",
+    "outer_lower_upstream",
+    "inner_lower_upstream_extra",
+    "inner_upper_upstream_extra",
+    "outer_upper_upstream_extra",
+    "outer_lower_upstream_extra",
     "inner_lower_sol_extra",
     "inner_upper_sol_extra",
     "outer_upper_sol_extra",
@@ -88,6 +100,8 @@ poloidal_selections["dn"] = [
     "inner_upper_sol",
     "outer_upper_sol",
     "outer_lower_sol",
+    "inner_sol",
+    "outer_sol",
     "sol",
     "inner_core",
     "outer_core",
@@ -98,6 +112,10 @@ poloidal_selections["dn"] = [
     "outer_lower_divertor",
     "lower_pfr",
     "upper_pfr",
+    "inner_lower_pfr",
+    "inner_upper_pfr",
+    "outer_lower_pfr",
+    "outer_upper_pfr",
     "pfr",
     "yguards",
 ]
@@ -105,6 +123,7 @@ poloidal_selections["dn"] = [
 
 plot = False
 generate_data = False
+check_missing_selectors = True
 
 
 def test_selectors(example_grids):
@@ -126,17 +145,40 @@ def test_selectors(example_grids):
         ),
     )
 
+    if check_missing_selectors:
+        # Test if all selectors are present in test set
+        ds_test_sn = xhermes.HypnotoadGrid(all_grids["sn_grids"]["lsn"])
+        ds_test_dn = xhermes.HypnotoadGrid(all_grids["dn_grids"]["cdn"])
+
+        missing = dict(sn = [], dn = [])
+
+        for topology_type, ds in zip(["sn", "dn"], [ds_test_sn, ds_test_dn]):
+            for selection in ds.metadata["poloidal_slices"]:
+                if selection not in poloidal_selections[topology_type]:
+                    missing[topology_type].append(selection)
+
+        if len(missing["sn"]) > 0 or len(missing["dn"]) > 0:
+            msg = "The following selectors are missing from the test grids:\n"
+            for topology_type in ["sn", "dn"]:
+                if len(missing[topology_type]) > 0:
+                    msg += f"\n{topology_type}:\n"
+                    for sel in missing[topology_type]:
+                        msg += f"  - {sel}\n"
+            raise ValueError(msg)
+
+
     if plot:
-        output_dir = Path("poloidal_selection_images")
+        output_dir = Path(__file__).parent / "poloidal_selection_images"
         output_dir.mkdir(exist_ok=True)
 
     for topology_type in ["sn", "dn"]:
-        print(f"Testing {topology_type} selectors...")
+        print(f"\n-> Testing {topology_type} selectors...")
         grids = all_grids[f"{topology_type}_grids"]
         nrows = len(grids)
 
         for i, selection in enumerate(poloidal_selections[topology_type]):
-            print(f"{selection}")
+            print(f"\n{selection}")
+            print("--------------------")
 
             if plot:
                 fig = plt.figure(figsize=(6, nrows * 4))
@@ -147,7 +189,7 @@ def test_selectors(example_grids):
             for row, (grid_name, path) in enumerate(grids.items()):
                 if "guards" in selection and "noguards" in grid_name:
                     continue
-                print(f"{grid_name} ", end="")
+                print(f"{grid_name}, ", end="")
                 ds = xhermes.HypnotoadGrid(path)
                 m = ds.metadata
 
@@ -177,6 +219,7 @@ def test_selectors(example_grids):
                         R_expected,
                         err_msg=f"Selector mismatch for {selection} in {grid_name}!",
                     )
+            print()
 
             if plot:
                 fig.savefig(

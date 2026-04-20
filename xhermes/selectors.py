@@ -53,11 +53,11 @@ def get_poloidal_slices(ds):
             index["inner_xpoint"] = j1_1g
             index["outer_xpoint"] = j2_2g + 1
 
-        else:
+        elif "upper" in topology:
             index["inner_target"] = nyg - MYG - 1
             index["outer_target"] = MYG
 
-            index["inner_xpoint"] = j1_1g
+            index["inner_xpoint"] = j2_2g+1
             index["outer_xpoint"] = j1_1g
 
         # R is called Rxy in the grid..
