@@ -7,7 +7,7 @@ def _selector_to_indices(selector, size):
 
     return selector
 
-def slice_poloidal(ds, name):
+def get_poloidal_slices(ds):
     """
 
     Returns poloidal indices/slices for named regions within a dataset.

@@ -209,18 +209,18 @@ def plot_grid(
                 c=cmap(5),
             )
 
-                ax.plot(
-                    ds[Rname][selection],
-                    ds[Zname][selection],
-                    label="selection",
-                    lw=0,
-                    alpha=1,
-                    ms=ms_selection / 5,
-                    marker="o",
-                    c=cmap(8),
-                    markeredgecolor="yellow",
-                    zorder=100,
-                )
+            ax.plot(
+                ds[Rname][selection],
+                ds[Zname][selection],
+                label="selection",
+                lw=0,
+                alpha=1,
+                ms=ms_selection / 5,
+                marker="o",
+                c=cmap(8),
+                markeredgecolor="yellow",
+                zorder=100,
+            )
 
             ax.plot(
                 ds[Rname][m["ixseps1"], :],

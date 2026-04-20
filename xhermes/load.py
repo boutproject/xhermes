@@ -15,7 +15,6 @@ def open_hermesdataset(
     info=False,
     unnormalise=True,
     debug_variable_names=False,
-    debug_variable_names=False,
     **kwargs,
 ):
     """
