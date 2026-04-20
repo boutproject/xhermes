@@ -1,0 +1,19 @@
+name: Linting
+on: [pull_request, push]
+
+jobs:
+  ruff-checks:
+    name: "Ruff Checks"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+      - name: Install ruff
+        run: pip install ruff
+      - name: Check formatting
+        run: ruff format --check --preview --output-format=github
+      - name: Run ruff
+        run: ruff check xhermes --output-format=github
+        

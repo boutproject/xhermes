@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def _selector_to_indices(selector, size):
     if isinstance(selector, slice):
         start, stop, step = selector.indices(size)
@@ -8,8 +7,7 @@ def _selector_to_indices(selector, size):
 
     return selector
 
-
-def get_poloidal_slices(ds):
+def slice_poloidal(ds, name):
     """
 
     Returns poloidal indices/slices for named regions within a dataset.

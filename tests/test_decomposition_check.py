@@ -2,7 +2,6 @@
 
 import xhermes
 import pytest
-import numpy as np
 import numpy.testing as npt
 
 from urllib.request import urlretrieve
@@ -25,12 +24,10 @@ expected_ncores = {
 
 @pytest.fixture(scope="session")
 def example_grids(tmp_path_factory):
-
     # Pytest fixture to make temporary directory
     # the decorator makes sure the files are only used for this session
     # and don't break stuff
     tmp = tmp_path_factory.mktemp("hypnotoad")
-    zip_path = tmp / "Hypnotoad_examples.zip"
     url = "https://zenodo.org/records/17966926/files/Hypnotoad_examples.zip"
     urlretrieve(url, "Hypnotoad_examples.zip")
     with zipfile.ZipFile("Hypnotoad_examples.zip", "r") as z:
@@ -40,7 +37,6 @@ def example_grids(tmp_path_factory):
 
 
 def test_selectors(example_grids):
-
     grids = dict(
         cdn=example_grids / "example_cdn.grd.nc",
         cdn_noguards=example_grids / "example_cdn_noguards.grd.nc",

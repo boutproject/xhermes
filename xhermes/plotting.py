@@ -160,7 +160,8 @@ def plot_grid(
         for i in range(Nx):
             for j in range(Ny):
                 p = mpl.patches.Polygon(
-                    np.concatenate((cell_r[i][j][tuple(idx)], cell_z[i][j][tuple(idx)]))
+                    np
+                    .concatenate((cell_r[i][j][tuple(idx)], cell_z[i][j][tuple(idx)]))
                     .reshape(2, 5)
                     .T,
                     fill=False,
@@ -184,6 +185,30 @@ def plot_grid(
             # Plot selection: color patches deeppink in RZ mode
             if selection != None:
                 color_idx[selection] = 8
+                ax.plot(
+                    ds[Rname][selection],
+                    ds[Zname][selection],
+                    label="selection",
+                    lw=0,
+                    alpha=1,
+                    ms=ms_selection / 5,
+                    marker="o",
+                    c=cmap(8),
+                    markeredgecolor="yellow",
+                    zorder=100,
+                )
+
+            ax.plot(
+                ds[Rname][m["ixseps1"], :],
+                ds[Zname][m["ixseps1"], :],
+                label="ixseps1",
+                lw=0,
+                alpha=1,
+                ms=2,
+                marker="o",
+                c=cmap(5),
+            )
+
                 ax.plot(
                     ds[Rname][selection],
                     ds[Zname][selection],

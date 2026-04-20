@@ -25,7 +25,7 @@ def guard_replace_1d(da):
 
     da = da.copy()
 
-    if type(da) == xarray.core.dataarray.DataArray:
+    if isinstance(da, xarray.core.dataarray.DataArray):
         if da.metadata["keep_yboundaries"] is False:
             raise ValueError("Cannot guard replace if y-boundaries are not kept")
 
