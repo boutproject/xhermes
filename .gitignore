@@ -175,3 +175,7 @@ cython_debug/
 
 # Archives
 *.zip
+
+# Images generated from tests
+/tests/**/*.png
+/tests/*.png
