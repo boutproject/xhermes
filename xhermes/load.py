@@ -4,7 +4,7 @@ import os
 import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
-from .selectors import get_poloidal_slices
+from .selectors import get_poloidal_selections, get_poloidal_slices
 
 
 def open_hermesdataset(
@@ -81,55 +81,67 @@ def open_hermesdataset(
 
             if varname[:2] == "NV":
                 # Momentum
-                da.attrs.update({
-                    "units": "kg m / s",
-                    "conversion": Mp * Nnorm * Cs0,
-                    "standard_name": "momentum",
-                    "long_name": varname[2:] + " parallel momentum",
-                })
+                da.attrs.update(
+                    {
+                        "units": "kg m / s",
+                        "conversion": Mp * Nnorm * Cs0,
+                        "standard_name": "momentum",
+                        "long_name": varname[2:] + " parallel momentum",
+                    }
+                )
             elif varname[0] == "N":
                 # Density
-                da.attrs.update({
-                    "units": "m^-3",
-                    "conversion": Nnorm,
-                    "standard_name": "density",
-                    "long_name": varname[1:] + " number density",
-                })
+                da.attrs.update(
+                    {
+                        "units": "m^-3",
+                        "conversion": Nnorm,
+                        "standard_name": "density",
+                        "long_name": varname[1:] + " number density",
+                    }
+                )
 
             elif varname[0] == "T":
                 # Temperature
-                da.attrs.update({
-                    "units": "eV",
-                    "conversion": Tnorm,
-                    "standard_name": "temperature",
-                    "long_name": varname[1:] + " temperature",
-                })
+                da.attrs.update(
+                    {
+                        "units": "eV",
+                        "conversion": Tnorm,
+                        "standard_name": "temperature",
+                        "long_name": varname[1:] + " temperature",
+                    }
+                )
 
             elif varname[0] == "V":
                 # Velocity
-                da.attrs.update({
-                    "units": "m / s",
-                    "conversion": Cs0,
-                    "standard_name": "velocity",
-                    "long_name": varname[1:] + " parallel velocity",
-                })
+                da.attrs.update(
+                    {
+                        "units": "m / s",
+                        "conversion": Cs0,
+                        "standard_name": "velocity",
+                        "long_name": varname[1:] + " parallel velocity",
+                    }
+                )
 
             elif varname[0] == "P":
                 # Pressure
-                da.attrs.update({
-                    "units": "Pa",
-                    "conversion": e * Tnorm * Nnorm,
-                    "standard_name": "pressure",
-                    "long_name": varname[1:] + " pressure",
-                })
+                da.attrs.update(
+                    {
+                        "units": "Pa",
+                        "conversion": e * Tnorm * Nnorm,
+                        "standard_name": "pressure",
+                        "long_name": varname[1:] + " pressure",
+                    }
+                )
             elif varname == "phi":
                 # Potential
-                da.attrs.update({
-                    "units": "V",
-                    "conversion": Tnorm,
-                    "standard_name": "potential",
-                    "long_name": "Plasma potential",
-                })
+                da.attrs.update(
+                    {
+                        "units": "V",
+                        "conversion": Tnorm,
+                        "standard_name": "potential",
+                        "long_name": "Plasma potential",
+                    }
+                )
             else:
                 # Don't know what this is
                 da.attrs["units_type"] = "unknown"
@@ -137,39 +149,47 @@ def open_hermesdataset(
         # Coordinates
         if varname == "dy":
             # Poloidal cell angular width
-            da.attrs.update({
-                "units": "radian",
-                "conversion": 1,
-                "standard_name": "poloidal cell angular width",
-                "long_name": "Poloidal cell angular width",
-            })
+            da.attrs.update(
+                {
+                    "units": "radian",
+                    "conversion": 1,
+                    "standard_name": "poloidal cell angular width",
+                    "long_name": "Poloidal cell angular width",
+                }
+            )
         elif varname == "dx":
             # Radial cell width
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "Wb",
-                "conversion": rho_s0**2 * Bnorm,
-                "standard_name": "radial cell width",
-                "long_name": "Radial cell width in flux space",
-            })
+            da.attrs.update(
+                {
+                    "units_type": "hermes",
+                    "units": "Wb",
+                    "conversion": rho_s0**2 * Bnorm,
+                    "standard_name": "radial cell width",
+                    "long_name": "Radial cell width in flux space",
+                }
+            )
         elif varname == "dz":
             # Radial cell width
-            da.attrs.update({
-                "units_type": "SI",
-                "units": "radian",
-                "conversion": 1,
-                "standard_name": "toroidal cell angular width",
-                "long_name": "Poloidal cell angular width",
-            })
+            da.attrs.update(
+                {
+                    "units_type": "SI",
+                    "units": "radian",
+                    "conversion": 1,
+                    "standard_name": "toroidal cell angular width",
+                    "long_name": "Poloidal cell angular width",
+                }
+            )
         elif varname == "J":
             # Jacobian
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "m/radian T",
-                "conversion": rho_s0 / Bnorm,
-                "standard_name": "Jacobian",
-                "long_name": "Jacobian to translate from flux to cylindrical coordinates in real space",
-            })
+            da.attrs.update(
+                {
+                    "units_type": "hermes",
+                    "units": "m/radian T",
+                    "conversion": rho_s0 / Bnorm,
+                    "standard_name": "Jacobian",
+                    "long_name": "Jacobian to translate from flux to cylindrical coordinates in real space",
+                }
+            )
         elif varname == "g11":
             # Metric tensor term
             da.attrs.update(
@@ -205,22 +225,26 @@ def open_hermesdataset(
             )
         elif varname == "g12":
             # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T",
-                "conversion": Bnorm,
-                "standard_name": "g12",
-                "long_name": "g12 term in the metric tensor",
-            })
+            da.attrs.update(
+                {
+                    "units_type": "hermes",
+                    "units": "T",
+                    "conversion": Bnorm,
+                    "standard_name": "g12",
+                    "long_name": "g12 term in the metric tensor",
+                }
+            )
         elif varname == "g13":
             # Metric tensor term
-            da.attrs.update({
-                "units_type": "hermes",
-                "units": "T",
-                "conversion": Bnorm,
-                "standard_name": "g13",
-                "long_name": "g13 term in the metric tensor",
-            })
+            da.attrs.update(
+                {
+                    "units_type": "hermes",
+                    "units": "T",
+                    "conversion": Bnorm,
+                    "standard_name": "g13",
+                    "long_name": "g13 term in the metric tensor",
+                }
+            )
         elif varname == "g23":
             # Metric tensor term
             da.attrs.update(
@@ -374,7 +398,7 @@ def open_hermesdataset(
         meta["geometry_extracted"] = True
 
     # Add poloidal slices to metadata for easy access by selectors and other tools
-    meta["poloidal_slices"] = get_poloidal_slices(ds)
+    meta["poloidal_selections"] = get_poloidal_selections(ds)
     # Put back into dataset
     ds.attrs["metadata"] = meta
 
