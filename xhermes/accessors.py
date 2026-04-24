@@ -2,9 +2,7 @@ import numpy as np
 from xarray import register_dataarray_accessor, register_dataset_accessor
 from xbout import BoutDataArrayAccessor, BoutDatasetAccessor
 
-from .selectors import _select_region
-
-
+from .selectors import _select_region, selector_poloidal, selector_radial
 
 
 @register_dataset_accessor("hermes")
@@ -325,14 +323,14 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
         """
 
         # Clear radial guards
-        xguards = slice_2d(self.data, "xguards")
+        xguards = selector_radial(self.data, "xguards")
         ds = self.data.copy()
-        ds[{"x": xguards[0], "theta": xguards[1]}] = np.nan
+        ds[{"x": xguards, "theta": slice(None)}] = np.nan
 
         # Clear target guards if they exist
         if self.data.metadata["MYG"] > 0:
-            yguards = slice_2d(self.data, "yguards")
-            ds[{"x": yguards[0], "theta": yguards[1]}] = np.nan
+            yguards = selector_poloidal(self.data, "yguards")
+            ds[{"x": slice(None), "theta": yguards}] = np.nan
 
         return ds
 

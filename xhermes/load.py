@@ -1,11 +1,12 @@
-from xbout import open_boutdataset
-
 import os
+
 import numpy as np
 from netCDF4 import Dataset as ncDataset
+from xbout import open_boutdataset
 from xbout.region import _get_topology
 
-from xhermes.selectors import select_2d
+from xhermes.selectors import selector_2d
+
 
 def open_hermesdataset(
     datapath="./BOUT.dmp.*.nc",
@@ -592,7 +593,7 @@ class HypnotoadGrid:
         if custom_selection is not None:
             selection = custom_selection
         else:
-            selection = select_2d(self.data, radial_region, poloidal_region)
+            selection = selector_2d(self.data, radial_region, poloidal_region)
 
         return self.data.isel(x=selection[0], theta=selection[1])
 

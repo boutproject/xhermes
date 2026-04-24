@@ -100,7 +100,7 @@ def test_radial_slices(all_grids):
 
     if selection_check_enabled:
         ds_test = xhermes.HypnotoadGrid(all_grids["sn_grids"]["lsn"])
-        available_selections = xhermes.select_radial(ds_test, return_available=True)
+        available_selections = xhermes.selector_radial(ds_test, return_available=True)
         missing = [
             selection
             for selection in available_selections
@@ -135,7 +135,7 @@ def test_radial_slices(all_grids):
         for row, (name, grid) in enumerate(grids.items()):
             print(f"{name}, ", end="")
             ds = xhermes.HypnotoadGrid(grid)
-            radial_selector = xhermes.select_radial(ds, selection)
+            radial_selector = xhermes.selector_radial(ds, selection)
 
             if plot:
                 ax0 = fig.add_subplot(gs[row, 0])
@@ -304,7 +304,7 @@ def test_poloidal_slices(all_grids):
         missing = dict(sn=[], dn=[])
 
         for topology_type, ds in zip(["sn", "dn"], [ds_test_sn, ds_test_dn]):
-            available_selections = xhermes.select_poloidal(ds, return_available=True)
+            available_selections = xhermes.selector_poloidal(ds, return_available=True)
             for selection in available_selections:
                 if selection not in poloidal_selections[topology_type]:
                     missing[topology_type].append(selection)
@@ -347,7 +347,7 @@ def test_poloidal_slices(all_grids):
                     continue
                 print(f"{grid_name}, ", end="")
                 ds = xhermes.HypnotoadGrid(path)
-                poloidal_selector = xhermes.select_poloidal(ds, selection)
+                poloidal_selector = xhermes.selector_poloidal(ds, selection)
 
                 # Generate plots for visual check
                 if plot:

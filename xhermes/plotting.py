@@ -1,7 +1,8 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from .selectors import select_2d
+
+from .selectors import selector_2d
 
 
 def plot_selection(
@@ -63,7 +64,7 @@ def plot_selection(
     if custom_selection is not None:
         selection = custom_selection
     else:
-        selection = select_2d(ds, radial_region, poloidal_region)
+        selection = selector_2d(ds, radial_region, poloidal_region)
 
     if axes is None:
         fig, axes = plt.subplots(1, 2, figsize=(6, 4), dpi=dpi)
