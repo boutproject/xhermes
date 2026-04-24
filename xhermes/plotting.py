@@ -215,9 +215,9 @@ def plot_grid(
             color_idx[:, m["jyseps2_1g"]] = 3
             color_idx[:, m["jyseps2_2g"]] = 4
             color_idx[:, m["ny_innerg"]] = 5
-            color_idx[m["ixseps1"], :] = 6
+            color_idx[m["ixseps1g"], :] = 6
             if "single-null" not in m["topology"]:
-                color_idx[m["ixseps2"], :] = 7
+                color_idx[m["ixseps2g"], :] = 7
 
             # Plot selection: color patches deeppink in RZ mode
             if selection != None:
@@ -251,9 +251,9 @@ def plot_grid(
 
             # Plot separatrix
             ax.plot(
-                ds[Rname][m["ixseps1"], :],
-                ds[Zname][m["ixseps1"], :],
-                label="ixseps1",
+                ds[Rname][m["ixseps1g"], :],
+                ds[Zname][m["ixseps1g"], :],
+                label="ixseps1g",
                 lw=0,
                 alpha=1,
                 ms=2,
@@ -263,9 +263,9 @@ def plot_grid(
 
             if "single-null" not in m["topology"]:
                 ax.plot(
-                    ds[Rname][m["ixseps2"], :],
-                    ds[Zname][m["ixseps2"], :],
-                    label="ixseps2",
+                    ds[Rname][m["ixseps2g"], :],
+                    ds[Zname][m["ixseps2g"], :],
+                    label="ixseps2g",
                     lw=0,
                     alpha=1,
                     ms=2,
@@ -306,9 +306,9 @@ def plot_grid(
         color[:, m["jyseps2_1g"]] = 3
         color[:, m["jyseps2_2g"]] = 4
         color[:, m["ny_innerg"]] = 5
-        color[m["ixseps1"], :] = 6
+        color[m["ixseps1g"], :] = 6
         if "single-null" not in m["topology"]:
-            color[m["ixseps2"], :] = 7
+            color[m["ixseps2g"], :] = 7
 
         if selection != None:
             ax.plot(
@@ -344,8 +344,8 @@ def plot_grid(
         mpl.lines.Line2D([0], [0], label="jyseps2_1g", color=cmap(3)),
         mpl.lines.Line2D([0], [0], label="jyseps2_2g", color=cmap(4)),
         mpl.lines.Line2D([0], [0], label="ny_innerg", color=cmap(5)),
-        mpl.lines.Line2D([0], [0], label="ixseps1", color=cmap(6)),
-        mpl.lines.Line2D([0], [0], label="ixseps2", color=cmap(7)),
+        mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
+        mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
         mpl.lines.Line2D(
             [0],
             [0],

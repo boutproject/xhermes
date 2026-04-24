@@ -223,8 +223,15 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
-        m["ixseps1g"] = m["ixseps1"] - m["MXG"]
-        m["ixseps2g"] = m["ixseps2"] - m["MXG"]
+
+        # If guard cells have been removed, the separatrix index must be shifted back.
+        # This assumes that there are always 2 X guards.
+        if m["MXG"] == 0:
+            m["ixseps1g"] = m["ixseps1"] - 2
+            m["ixseps2g"] = m["ixseps2"] - 2
+        else:
+            m["ixseps1g"] = m["ixseps1"]
+            m["ixseps2g"] = m["ixseps2"]
 
         # Array of radial (x) indices and of poloidal (y) indices for each cell
         # This is useful because Xarray makes it awkward to extract indices in certain cases

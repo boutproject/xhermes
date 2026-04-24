@@ -5,7 +5,7 @@ from netCDF4 import Dataset as ncDataset
 from xbout import open_boutdataset
 from xbout.region import _get_topology
 
-from xhermes.selectors import selector_2d
+from xhermes.selectors import selector_2d, selector_poloidal, selector_radial
 
 
 def open_hermesdataset(
@@ -524,7 +524,7 @@ class HypnotoadGrid:
         ]:
             m[param] = int(self[param].data)
 
-        m["MYG"] = self.y_boundary_guards.data
+        m["MYG"] = int(self.y_boundary_guards)
         m["MXG"] = 2  # Hypnotoad grids always have X guards (?)
 
         # Put m back into the object temporarily to use xBOUT's topology detection
@@ -568,8 +568,15 @@ class HypnotoadGrid:
         m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
-        m["ixseps1g"] = m["ixseps1"] - m["MXG"]
-        m["ixseps2g"] = m["ixseps2"] - m["MXG"]
+
+        # X guards are always present in a Hypnotoad grid.
+        # They can be removed only with HypnotoadGrid.remove_guards(),
+        # where ixseps1g and ixseps2g are recalculated.
+        m["ixseps1g"] = m["ixseps1"]
+        m["ixseps2g"] = m["ixseps2"]
+
+        # Put metadata into the object once again with the extra entries
+        self.metadata = m
 
     def _select_region(self, radial_region=None, poloidal_region=None, custom_selection=None):
         """
@@ -614,6 +621,9 @@ class HypnotoadGrid:
         if m["MXG"] == 0 and m["MYG"] == 0:
             raise RuntimeError("X and Y guards already removed")
 
+        selector_yguards = selector_poloidal(self, "yguards")
+        selector_xdomain = selector_radial(self, "domain")
+
         for key in new.keys():
             item = new[key]
 
@@ -622,12 +632,10 @@ class HypnotoadGrid:
                     # If 2D array, remove radial and poloidal guards
                     if len(item.shape) == 2:
                         if m["MXG"] != 0:
-                            item = item[slice(2, -2), slice(None)]
+                            item = item[selector_xdomain, :]
 
                         if m["MYG"] != 0:
-                            item = np.delete(
-                                item, m["poloidal_slices"]["yguards"], axis=1
-                            )
+                            item = np.delete(item, selector_yguards, axis=1)
 
                     # If 1D array matching radial size, remove radial guards
                     if m["MXG"] != 0:
@@ -637,16 +645,23 @@ class HypnotoadGrid:
                     # If 1D array matching poloidal size, remove poloidal guards
                     if m["MYG"] != 0:
                         if len(item.shape) == 1 and item.shape[0] == new["ny"]:
-                            item = np.delete(
-                                item, m["poloidal_slices"]["yguards"], axis=0
-                            )
+                            item = np.delete(item, selector_yguards, axis=0)
 
                     new[key] = item
 
+        new.metadata["y_boundary_guards"] = 0
+        new["y_boundary_guards"] = 0
+
+        # Recalculate metadata now that guard cells are removed
+        new._add_metadata()
+
+        # _add_metadata has to assume MXG=2 as Hypnotoad doesn't allow no guard cells.
+        # We have to override it back to 0.
         new.metadata["MXG"] = 0
         new.metadata["MYG"] = 0
-        new.metadata["y_boundary_guards"] = 0
-        new["y_boundary_guads"] = 0
+        new.metadata["ixseps1g"] = new.metadata["ixseps1"] - 2
+        new.metadata["ixseps2g"] = new.metadata["ixseps2"] - 2
+        new.metadata["nxg"] = new.metadata["nx"] - 4
 
         return new
 
