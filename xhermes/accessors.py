@@ -1,7 +1,10 @@
 import numpy as np
-from xarray import register_dataset_accessor, register_dataarray_accessor
-from xbout import BoutDatasetAccessor, BoutDataArrayAccessor
-from .selectors import slice_2d
+from xarray import register_dataarray_accessor, register_dataset_accessor
+from xbout import BoutDataArrayAccessor, BoutDatasetAccessor
+
+from .selectors import _select_region
+
+
 
 
 @register_dataset_accessor("hermes")
@@ -13,7 +16,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
     def __init__(self, ds):
         super().__init__(ds)
 
-    def select_region(self, poloidal_region, radial_region):
+    def select_region(self, radial_region=None, poloidal_region=None, custom_selection=None):
         """
         Select a radial/poloidal region from the dataset
 
@@ -23,14 +26,16 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
         radial_region : str
             Radial region name to select. See xhermes.selectors.slice_2d.
+        custom_selection : tuple of slices, optional
+            Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
+            If provided, this will override the radial_region and poloidal_region parameters.
 
         Returns
         -------
         xarray.Dataset
             Dataset with data selected for the specified region.
         """
-        selection = slice_2d(self.data, poloidal_region, radial_region)
-        return self.data.isel(x=selection[0], theta=selection[1])
+        return _select_region(self.data, radial_region, poloidal_region, custom_selection)
 
     def unnormalise(self):
         """
@@ -220,6 +225,8 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
+        m["ixseps1g"] = m["ixseps1"] - m["MXG"]
+        m["ixseps2g"] = m["ixseps2"] - m["MXG"]
 
         # Array of radial (x) indices and of poloidal (y) indices for each cell
         # This is useful because Xarray makes it awkward to extract indices in certain cases
@@ -329,24 +336,26 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
 
         return ds
 
-    def select_region(self, name, guards=False):
+    def select_region(self, radial_region=None, poloidal_region=None, custom_selection=None):
         """
-        Select a radial/poloidal region from the DataArray
+        Select a radial/poloidal region from the dataarray
 
         Parameters
         ----------
-        name : str
-            Region name to select. Must be compatible with `slice_2d`.
-        guards : bool, optional
-            Whether to include guard cells in the selection. Default is False.
+        poloidal_region : str
+            Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
+        radial_region : str
+            Radial region name to select. See xhermes.selectors.slice_2d.
+        custom_selection : tuple of slices, optional
+            Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
+            If provided, this will override the radial_region and poloidal_region parameters.
 
         Returns
         -------
         xarray.DataArray
-            DataArray with data selected for the specified region
+            DataArray with data selected for the specified region.
         """
-        selection = slice_2d(self.data, name, guards=guards)
-        return self.data.isel(x=selection[0], theta=selection[1])
+        return _select_region(self.data, radial_region, poloidal_region, custom_selection)
 
     def unnormalise(self):
         """
@@ -365,3 +374,4 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
             self.data *= self.data.attrs["conversion"]
             self.data.attrs["units_type"] = "SI"
         return self
+

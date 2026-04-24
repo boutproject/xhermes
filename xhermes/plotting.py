@@ -1,14 +1,13 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-
-from .selectors import slice_2d
+from .selectors import select_2d
 
 
 def plot_selection(
     ds,
-    poloidal_region=None,
     radial_region=None,
+    poloidal_region=None,
     custom_selection=None,
     dpi=150,
     title="",
@@ -64,10 +63,10 @@ def plot_selection(
     if custom_selection is not None:
         selection = custom_selection
     else:
-        selection = slice_2d(ds, poloidal_region, radial_region)
+        selection = select_2d(ds, radial_region, poloidal_region)
 
     if axes is None:
-        fig, axes = plt.subplots(1, 2, figsize=(8, 6), dpi=dpi)
+        fig, axes = plt.subplots(1, 2, figsize=(6, 4), dpi=dpi)
         own_fig = True
     else:
         if len(axes) != 2 or any(not hasattr(axis, "get_figure") for axis in axes):
@@ -95,8 +94,8 @@ def plot_grid(
     plot_region_boundaries=True,
     legend=True,
     title="",
-    linecolor="grey",
-    linewidth=0.2,
+    linecolor="black",
+    linewidth=0.05,
 ):
     """
     Create a 2D polygon plot of a Hermes-3 grid
@@ -235,17 +234,7 @@ def plot_grid(
                     zorder=100,
                 )
 
-            ax.plot(
-                ds[Rname][m["ixseps1"], :],
-                ds[Zname][m["ixseps1"], :],
-                label="ixseps1",
-                lw=0,
-                alpha=1,
-                ms=2,
-                marker="o",
-                c=cmap(5),
-            )
-
+            # Plot selection
             ax.plot(
                 ds[Rname][selection],
                 ds[Zname][selection],
@@ -259,6 +248,7 @@ def plot_grid(
                 zorder=100,
             )
 
+            # Plot separatrix
             ax.plot(
                 ds[Rname][m["ixseps1"], :],
                 ds[Zname][m["ixseps1"], :],
@@ -266,7 +256,7 @@ def plot_grid(
                 lw=0,
                 alpha=1,
                 ms=2,
-                marker="o",
+                marker=None,
                 c=cmap(5),
             )
 
@@ -278,7 +268,7 @@ def plot_grid(
                     lw=0,
                     alpha=1,
                     ms=2,
-                    marker="o",
+                    marker=None,
                     c=cmap(6),
                 )
 
@@ -339,7 +329,7 @@ def plot_grid(
             color,
             cmap=cmap,
             norm=norm,
-            linewidth=0.1,
+            linewidth=linewidth,
             antialiased=True,
             color="k",
         )

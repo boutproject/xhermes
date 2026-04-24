@@ -1,15 +1,7 @@
 import numpy as np
 
 
-def _selector_to_indices(selector, size):
-    if isinstance(selector, slice):
-        start, stop, step = selector.indices(size)
-        return np.arange(start, stop, step, dtype=int)
-
-    return selector
-
-
-def get_poloidal_selections(ds):
+def select_poloidal(ds, name=None, return_available=False):
     """
 
     Returns poloidal indices for named regions within a dataset.
@@ -18,12 +10,15 @@ def get_poloidal_selections(ds):
     ----------
     ds : Dataset
         Either HypnotoadGrid or xBOUT/xHermes dataset.
+    name : str, optional
+        Name of the poloidal region to select. If None, no region is selected.
+    return_available : bool, optional
+        If True, return all available poloidal regions as a list.
 
     Returns
     -------
-    dict
-        Dictionary containing integer indices or integer arrays describing the
-        required poloidal regions.
+    slice or array
+        Slice or array of integer indices describing the required poloidal region.
     """
 
     m = ds.metadata
@@ -32,7 +27,7 @@ def get_poloidal_selections(ds):
     j1_2g = m["jyseps1_2g"]
     j2_1g = m["jyseps2_1g"]
     j2_2g = m["jyseps2_2g"]
-    ixseps1 = m["ixseps1"]
+    ixseps1g = m["ixseps1g"]
     MYG = m["MYG"]
     MYG_half = int(MYG / 2)
     nyg = m["nyg"]
@@ -69,7 +64,7 @@ def get_poloidal_selections(ds):
         else:
             raise Exception("RZ coordinates not found in dataset")
 
-        R_sep = ds[f"R{suffix}"][ixseps1, :]
+        R_sep = ds[f"R{suffix}"][ixseps1g, :]
         R_diff = np.diff(R_sep)
 
         # Single null midplane found by R gradient sign change
@@ -323,26 +318,96 @@ def get_poloidal_selections(ds):
                 slice(ny_innerg - MYG, ny_innerg),
                 slice(nyg - MYG, nyg),
             ]
+    if not return_available and not name:
+        raise ValueError(
+            "Must specify a poloidal region to select, or set return_available to True"
+        )
+    if return_available:
+        return list(index.keys())
 
-    return {
-        name: _selector_to_indices(selector, nyg) for name, selector in index.items()
-    }
+    if name in index:
+        return index[name]
+    else:
+        raise ValueError(
+            f"Unknown poloidal selection {name}. Must be one of {list(index.keys())}"
+        )
 
 
-def select_2d(ds, poloidal_selection, radial_selection):
+def select_radial(ds, radial_region=None, return_available=False):
     """
 
-    Return a tuple of radial and poloidal indices/slices for regions within a dataset.
+    Return a slice of radial indices for a given radial region.
+
+    Parameters
+    ----------
+    ds : Dataset
+        Either HypnotoadGrid or xBOUT/xHermes dataset.
+    radial_region : str, optional
+        Name of the radial region to select (e.g., "domain", "domain_guards", "xlow_boundary",
+        "xlow_boundary_guard", "xup_boundary", "xup_boundary_guard").
+    return_available : bool, optional
+        If True, return all available radial regions as a list.
+
+    Returns
+    -------
+    slice
+        Slice describing the required radial region within the dataset.
+
+    """
+
+    m = ds.metadata
+
+    index = {
+        "domain": slice(m["MXG"], m["nxg"] - m["MXG"]),
+        "domain_guards": slice(0, m["nxg"]),
+        "xguards": np.r_[slice(0, m["MXG"]), slice(m["nxg"] - m["MXG"], m["nxg"])],
+        "boundary_xlow": m["MXG"],
+        "boundary_guard_xlow": m["MXG"] - 1,
+        "boundary_xup": m["nxg"] - m["MXG"] - 1,
+        "boundary_guard_xup": m["nxg"] - m["MXG"],
+        "sol": slice(m["ixseps1"], m["nxg"] - m["MXG"]),
+        "sol_guards": slice(m["ixseps1"], m["nxg"]),
+        "core": slice(m["MXG"], m["ixseps1"]),
+        "core_guards": slice(0, m["ixseps1"]),
+    }
+
+    index["pfr"] = index["core"]
+    index["pfr_guards"] = index["core_guards"]
+
+    if return_available:
+        return list(index.keys())
+
+    if radial_region is None:
+        raise ValueError(
+            "Must specify a radial region to select, or set return_available to True"
+        )
+
+    if "guard" in radial_region and m["MXG"] == 0:
+        raise ValueError("Cannot select X guard cells if they don't exist! MXG is 0")
+
+    if radial_region in index:
+        return index[radial_region]
+
+    raise ValueError(
+        f"Unknown radial region {radial_region}. Must be one of {list(index.keys())}"
+    )
+
+
+def select_2d(ds, radial_region, poloidal_region):
+    """
+
+    Combines radial and poloidal selection with special handling of incompatible combinations (e.g., SOL and inner boundary).
+    Adds "boundary" and "boundary_guard" option for radial_region which picks the side automatically.
+    Returns a tuple of radial and poloidal slices.
 
     Parameters
     ----------
     ds : xarray.Dataset-like
         Either HypnotoadGrid or xBOUT/xHermes dataset.
-    poloidal_selection : str
-        Name of the poloidal region to select (see xhermes.selectors.get_poloidal_selections for options).
-    radial_selection : str
-        Name of the radial region to select (e.g., "domain", "domain_guards", "inner_boundary",
-        "inner_guard", "outer_boundary", "outer_guard").
+    radial_region : str
+        Name of the radial region to select (e.g., "domain", "domain_guards", "boundary", "boundary_guard").
+    poloidal_region : str
+        Name of the poloidal region to select (see xhermes.selectors.select_poloidal for options).
 
     Returns
     -------
@@ -353,38 +418,66 @@ def select_2d(ds, poloidal_selection, radial_selection):
 
     m = ds.metadata
 
-    if "guard" in radial_selection and m["MXG"] == 0:
+    ## Handle selecting guard cells if no guards present
+    if "guard" in radial_region and m["MXG"] == 0:
         raise ValueError("Cannot select X guard cells if they don't exist! MXG is 0")
-    if "guard" in poloidal_selection and m["MYG"] == 0:
+    if "guard" in poloidal_region and m["MYG"] == 0:
         raise ValueError("Cannot select Y guard cells if they don't exist! MYG is 0")
 
-    if radial_selection == "domain":
-        x = slice(m["MXG"], m["nxg"] - m["MXG"])
-    elif radial_selection == "domain_guards":
-        x = slice(0, m["nxg"])
-    elif radial_selection == "inner_boundary":
-        x = slice(m["MXG"], m["MXG"] + 1)
-    elif radial_selection == "inner_boundary_guard":
-        x = slice(m["MXG"] - 1, m["MXG"])
-    elif radial_selection == "outer_boundary":
-        x = slice(m["nxg"] - m["MXG"] - 1, m["nxg"] - m["MXG"])
-    elif radial_selection == "outer_boundary_guard":
-        x = slice(m["nxg"] - m["MXG"], m["nxg"] - m["MXG"] + 1)
-    else:
-        raise ValueError(
-            f'Unknown radial selection {radial_selection}. Must be one of "domain", "domain_guards", "inner_boundary", '
-            f'"inner_guard", "outer_boundary", "outer_guard"'
-        )
+    ## When radial_region is just "boundary", automatically pick the side
+    if radial_region == "boundary" or radial_region == "boundary_guard":
+        if any([x in poloidal_region for x in ["sol", "divertor"]]):
+            x_side = "xup"
+        elif any([x in poloidal_region for x in ["core", "pfr"]]):
+            x_side = "xlow"
+        else:
+            raise ValueError(
+                f"Cannot automatically determine which boundary to select for poloidal region `{poloidal_region}`. "
+                "Please specify the radial region as either 'boundary_xlow', 'boundary_guard_xlow', 'boundary_xup', or 'boundary_guard_xup'."
+            )
+        radial_region = f"{radial_region}_{x_side}"
 
-    ## Handle special cases
-    if radial_selection == "inner_boundary" and any(
-        [x in poloidal_selection for x in ["sol", "divertor"]]
+    ## Handle selecting wrong radial region side
+    if radial_region == "boundary_xlow" and any(
+        [x in poloidal_region for x in ["sol", "divertor"]]
     ):
         raise ValueError(
-            f"Cannot select {poloidal_selection} with {radial_selection}: "
+            f"Cannot select {poloidal_region} with {radial_region}: "
             "SOL and divertor regions don't extend to the inner boundary."
         )
+    if radial_region == "boundary_xup" and any(
+        [x in poloidal_region for x in ["core", "pfr"]]
+    ):
+        raise ValueError(
+            f"Cannot select {poloidal_region} with {radial_region}: "
+            "Core and PFR regions don't extend to the outer boundary."
+        )
 
-    y = m["poloidal_slices"][poloidal_selection]
+    return (select_radial(ds, radial_region), select_poloidal(ds, poloidal_region))
 
-    return (x, y)
+
+def _select_region(ds, radial_region=None, poloidal_region=None, custom_selection=None):
+    """
+    Select a radial/poloidal region from the a Dataset or DataArray
+
+    Parameters
+    ----------
+    poloidal_region : str
+        Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
+    radial_region : str
+        Radial region name to select. See xhermes.selectors.slice_2d.
+    custom_selection : tuple of slices, optional
+        Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
+        If provided, this will override the radial_region and poloidal_region parameters.
+
+    Returns
+    -------
+    xarray.Dataset or xarray.DataArray
+        Dataset with data selected for the specified region.
+    """
+    if custom_selection is not None:
+        selection = custom_selection
+    else:
+        selection = select_2d(ds, radial_region, poloidal_region)
+
+    return ds.isel(x=selection[0], theta=selection[1])

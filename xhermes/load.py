@@ -4,8 +4,8 @@ import os
 import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
-from .selectors import get_poloidal_selections, get_poloidal_slices
 
+from xhermes.selectors import select_2d
 
 def open_hermesdataset(
     datapath="./BOUT.dmp.*.nc",
@@ -397,8 +397,6 @@ def open_hermesdataset(
         ds = ds.hermes.extract_2d_tokamak_geometry()
         meta["geometry_extracted"] = True
 
-    # Add poloidal slices to metadata for easy access by selectors and other tools
-    meta["poloidal_selections"] = get_poloidal_selections(ds)
     # Put back into dataset
     ds.attrs["metadata"] = meta
 
@@ -468,7 +466,6 @@ class HypnotoadGrid:
 
         # Add metadata for compatibility with Hermes-3 result dataset tools
         self._add_metadata()
-        self._add_poloidal_slices()
 
     def keys(self):
         return self._data.keys()
@@ -570,9 +567,34 @@ class HypnotoadGrid:
         m["jyseps2_1g"] = m["jyseps2_1"] + m["MYG"]
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
+        m["ixseps1g"] = m["ixseps1"] - m["MXG"]
+        m["ixseps2g"] = m["ixseps2"] - m["MXG"]
 
-    def _add_poloidal_slices(self):
-        self.metadata["poloidal_slices"] = get_poloidal_slices(self)
+    def _select_region(self, radial_region=None, poloidal_region=None, custom_selection=None):
+        """
+        Select a radial/poloidal region from the a Dataset or DataArray
+
+        Parameters
+        ----------
+        poloidal_region : str
+            Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
+        radial_region : str
+            Radial region name to select. See xhermes.selectors.slice_2d.
+        custom_selection : tuple of slices, optional
+            Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
+            If provided, this will override the radial_region and poloidal_region parameters.
+
+        Returns
+        -------
+        xarray.Dataset or xarray.DataArray
+            Dataset with data selected for the specified region.
+        """
+        if custom_selection is not None:
+            selection = custom_selection
+        else:
+            selection = select_2d(self.data, radial_region, poloidal_region)
+
+        return self.data.isel(x=selection[0], theta=selection[1])
 
     def remove_guards(self):
         """
