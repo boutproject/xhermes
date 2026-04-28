@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+ name="xhermes"
+version="0.1.1"
+description="Analyse data from Hermes-3 simulations using xarray"
+license="Apache-2.0"
+readme="README.md"
+classifiers=[
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Physics"
+]
+dependencies = ["xarray", "xbout"]
+
+[tool.setuptools]
+packages = ["xhermes"]
+
+[tool.black]
+preview = true
+
+[tool.ruff.format]
+preview = true
