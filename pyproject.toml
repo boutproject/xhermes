@@ -23,8 +23,5 @@ dependencies = ["xarray", "xbout"]
 [tool.setuptools]
 packages = ["xhermes"]
 
-[tool.black]
-preview = true
-
 [tool.ruff.format]
 preview = true
