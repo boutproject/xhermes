@@ -17,28 +17,35 @@ import xhermes
 # cells are stored in a JSON file and compared to the test output. The test can also be used to
 # generate the expected data by setting generate_data = True, which will save the R coordinates
 # of the selected cells for all grids to the JSON file. The test also generates plots of
-# the logical and poloidal grid with the selected region highlighted for visual inspection, which
-# can be saved by setting plot = True.
+# the logical and poloidal grid with the selected region highlighted for visual inspection.
+# Optional developer workflows are controlled with local booleans below.
 ###
 
-plot = False
-generate_data = False
-check_missing_selectors = False
+plot = True
+generate_data = True
+selection_check_enabled = True
 remove_old_images = False
 
 ##################################################################################
 
-RCOORDS_FILE = Path(__file__).parent / "test_slice_poloidal_reference.json"
+POLOIDAL_RCOORDS_FILE = Path(__file__).parent / "test_slice_poloidal_reference.json"
+RADIAL_RCOORDS_FILE = Path(__file__).parent / "test_slice_radial_reference.json"
 
-if RCOORDS_FILE.exists():
-    with open(RCOORDS_FILE) as f:
-        Rcoords = json.load(f)
+if POLOIDAL_RCOORDS_FILE.exists():
+    with open(POLOIDAL_RCOORDS_FILE) as f:
+        poloidal_Rcoords = json.load(f)
 else:
-    Rcoords = {}
+    poloidal_Rcoords = {}
+
+if RADIAL_RCOORDS_FILE.exists():
+    with open(RADIAL_RCOORDS_FILE) as f:
+        radial_Rcoords = json.load(f)
+else:
+    radial_Rcoords = {}
 
 
 @pytest.fixture(scope="session")
-def example_grids(tmp_path_factory):
+def all_grids(tmp_path_factory):
     # Pytest fixture to make temporary directory
     # the decorator makes sure the files are only used for this session
     # and don't break stuff
@@ -49,10 +56,142 @@ def example_grids(tmp_path_factory):
     with zipfile.ZipFile(zip_path, "r") as z:
         z.extractall(tmp)
 
-    return tmp
+    all_grids = dict(
+        sn_grids=dict(
+            lsn=tmp / "example_lsn.grd.nc",
+            lsn_noguards=tmp / "example_lsn_noguards.grd.nc",
+            usn=tmp / "example_usn.grd.nc",
+            usn_noguards=tmp / "example_usn_noguards.grd.nc",
+        ),
+        dn_grids=dict(
+            cdn=tmp / "example_cdn.grd.nc",
+            cdn_noguards=tmp / "example_cdn_noguards.grd.nc",
+            ldn=tmp / "example_ldn.grd.nc",
+            ldn_noguards=tmp / "example_ldn_noguards.grd.nc",
+            udn2=tmp / "example_udn2.grd.nc",
+            udn2_noguards=tmp / "example_udn2_noguards.grd.nc",
+        ),
+    )
+
+    return all_grids
 
 
-def test_poloidal_slices(example_grids):
+def test_radial_slices(all_grids):
+    radial_selections = [
+        "domain",
+        "domain_guards",
+        "xguards",
+        "sol",
+        "sol_guards",
+        "core",
+        "core_guards",
+        "pfr",
+        "pfr_guards",
+        "boundary_xlow",
+        "boundary_guard_xlow",
+        "boundary_xup",
+        "boundary_guard_xup",
+    ]
+
+    grids = dict(
+        lsn=all_grids["sn_grids"]["lsn"],
+        udn2=all_grids["dn_grids"]["cdn"],
+    )
+
+    if selection_check_enabled:
+        ds_test = xhermes.HypnotoadGrid(all_grids["sn_grids"]["lsn"])
+        available_selections = xhermes.select_radial(ds_test, return_available=True)
+        missing = [
+            selection
+            for selection in available_selections
+            if selection not in radial_selections
+        ]
+
+        if missing:
+            msg = "The following radial selectors are missing in the the test definition:\n"
+            for selection in missing:
+                msg += f'  "{selection}"\n'
+            raise ValueError(msg)
+
+    if plot:
+        output_dir = Path(__file__).parent / "radial_selection_images"
+        output_dir.mkdir(exist_ok=True)
+
+        if remove_old_images:
+            # Remove all old images if present
+            for output_file in output_dir.glob("*.png"):
+                output_file.unlink()
+
+    nrows = len(grids)
+
+    for selection in radial_selections:
+        print(f"\n{selection}")
+        print("--------------------")
+
+        if plot:
+            fig = plt.figure(figsize=(6, nrows * 4))
+            gs = fig.add_gridspec(nrows, 2, width_ratios=[1, 1], hspace=0.5, wspace=0.1)
+
+        for row, (name, grid) in enumerate(grids.items()):
+            print(f"{name}, ", end="")
+            ds = xhermes.HypnotoadGrid(grid)
+            radial_selector = xhermes.select_radial(ds, selection)
+
+            if plot:
+                ax0 = fig.add_subplot(gs[row, 0])
+                ax1 = fig.add_subplot(gs[row, 1])
+                xhermes.plot_selection(
+                    ds,
+                    custom_selection=(radial_selector, slice(None)),
+                    axes=[ax0, ax1],
+                )
+                ax0.set_title(f"{name}\nLogical")
+                ax1.set_title(f"{name}\nPoloidal")
+
+            R_test = ds["Rxy"][radial_selector, slice(None)]
+
+            if generate_data:
+                if selection not in radial_Rcoords:
+                    radial_Rcoords[selection] = {}
+                radial_Rcoords[selection][name] = R_test.tolist()
+            else:
+                if selection not in radial_Rcoords:
+                    raise ValueError(
+                        f"Selection {selection} not found in radial reference data, cannot test!"
+                    )
+                if name not in radial_Rcoords[selection]:
+                    raise ValueError(
+                        f"Grid {name} not found in radial reference data for selection {selection}, cannot test!"
+                    )
+                R_expected = radial_Rcoords[selection][name]
+                npt.assert_array_equal(
+                    R_test,
+                    R_expected,
+                    err_msg=f"Radial selector mismatch for {selection} in {name}!",
+                )
+
+        print()
+
+        if plot:
+            fig.savefig(
+                output_dir / f"{selection}.png",
+                dpi=300,
+                bbox_inches="tight",
+            )
+            plt.close(fig)
+
+    if generate_data:
+        with open(RADIAL_RCOORDS_FILE, "w") as f:
+            json.dump(radial_Rcoords, f, indent=2)
+        print(f"Saved expected data to {RADIAL_RCOORDS_FILE}")
+
+    if generate_data or plot:
+        raise Exception(
+            "Test is set to fail if generate_data = True or plot = True, to prevent accidentally leaving these on. Set both to False to run the test normally."
+        )
+
+
+def test_poloidal_slices(all_grids):
     poloidal_selections = {}
 
     poloidal_selections["sn"] = [
@@ -157,24 +296,7 @@ def test_poloidal_slices(example_grids):
         "yguards",
     ]
 
-    all_grids = dict(
-        sn_grids=dict(
-            lsn=example_grids / "example_lsn.grd.nc",
-            lsn_noguards=example_grids / "example_lsn_noguards.grd.nc",
-            usn=example_grids / "example_usn.grd.nc",
-            usn_noguards=example_grids / "example_usn_noguards.grd.nc",
-        ),
-        dn_grids=dict(
-            cdn=example_grids / "example_cdn.grd.nc",
-            cdn_noguards=example_grids / "example_cdn_noguards.grd.nc",
-            ldn=example_grids / "example_ldn.grd.nc",
-            ldn_noguards=example_grids / "example_ldn_noguards.grd.nc",
-            udn2=example_grids / "example_udn2.grd.nc",
-            udn2_noguards=example_grids / "example_udn2_noguards.grd.nc",
-        ),
-    )
-
-    if check_missing_selectors:
+    if selection_check_enabled:
         # Test if all selectors are present in test set
         ds_test_sn = xhermes.HypnotoadGrid(all_grids["sn_grids"]["lsn"])
         ds_test_dn = xhermes.HypnotoadGrid(all_grids["dn_grids"]["cdn"])
@@ -182,7 +304,8 @@ def test_poloidal_slices(example_grids):
         missing = dict(sn=[], dn=[])
 
         for topology_type, ds in zip(["sn", "dn"], [ds_test_sn, ds_test_dn]):
-            for selection in ds.metadata["poloidal_slices"]:
+            available_selections = xhermes.select_poloidal(ds, return_available=True)
+            for selection in available_selections:
                 if selection not in poloidal_selections[topology_type]:
                     missing[topology_type].append(selection)
 
@@ -224,7 +347,7 @@ def test_poloidal_slices(example_grids):
                     continue
                 print(f"{grid_name}, ", end="")
                 ds = xhermes.HypnotoadGrid(path)
-                m = ds.metadata
+                poloidal_selector = xhermes.select_poloidal(ds, selection)
 
                 # Generate plots for visual check
                 if plot:
@@ -232,29 +355,29 @@ def test_poloidal_slices(example_grids):
                     ax1 = fig.add_subplot(gs[row, 1])
                     xhermes.plot_selection(
                         ds,
-                        custom_selection=(slice(None), m["poloidal_slices"][selection]),
+                        custom_selection=(slice(None), poloidal_selector),
                         axes=[ax0, ax1],
                     )
                     ax0.set_title(f"{grid_name}\nLogical")
                     ax1.set_title(f"{grid_name}\nPoloidal")
 
                 # Generate test data and compare to expected
-                R_test = ds["Rxy"][slice(None), m["poloidal_slices"][selection]]
+                R_test = ds["Rxy"][slice(None), poloidal_selector]
 
                 if generate_data:
-                    if selection not in Rcoords:
-                        Rcoords[selection] = {}
-                    Rcoords[selection][grid_name] = R_test.tolist()
+                    if selection not in poloidal_Rcoords:
+                        poloidal_Rcoords[selection] = {}
+                    poloidal_Rcoords[selection][grid_name] = R_test.tolist()
                 else:
-                    if selection not in Rcoords:
+                    if selection not in poloidal_Rcoords:
                         raise ValueError(
                             f"Selection {selection} not found in reference data, cannot test!"
                         )
-                    if grid_name not in Rcoords[selection]:
+                    if grid_name not in poloidal_Rcoords[selection]:
                         raise ValueError(
                             f"Grid {grid_name} not found in reference data for selection {selection}, cannot test!"
                         )
-                    R_expected = Rcoords[selection][grid_name]
+                    R_expected = poloidal_Rcoords[selection][grid_name]
                     npt.assert_array_equal(
                         R_test,
                         R_expected,
@@ -271,9 +394,9 @@ def test_poloidal_slices(example_grids):
                 plt.close(fig)
 
     if generate_data:
-        with open(RCOORDS_FILE, "w") as f:
-            json.dump(Rcoords, f, indent=2)
-        print(f"Saved expected data to {RCOORDS_FILE}")
+        with open(POLOIDAL_RCOORDS_FILE, "w") as f:
+            json.dump(poloidal_Rcoords, f, indent=2)
+        print(f"Saved expected data to {POLOIDAL_RCOORDS_FILE}")
 
     if generate_data or plot:
         raise Exception(
