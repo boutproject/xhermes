@@ -21,10 +21,10 @@ import xhermes
 # Optional developer workflows are controlled with local booleans below.
 ###
 
-plot = True
-generate_data = True
+plot = False
+generate_data = False
 selection_check_enabled = True
-remove_old_images = False
+remove_old_images = True
 
 ##################################################################################
 
@@ -58,20 +58,27 @@ def all_grids(tmp_path_factory):
 
     all_grids = dict(
         sn_grids=dict(
-            lsn=tmp / "example_lsn.grd.nc",
-            lsn_noguards=tmp / "example_lsn_noguards.grd.nc",
-            usn=tmp / "example_usn.grd.nc",
-            usn_noguards=tmp / "example_usn_noguards.grd.nc",
+            lsn=xhermes.HypnotoadGrid(tmp / "example_lsn.grd.nc"),
+            lsn_noguards=xhermes.HypnotoadGrid(tmp / "example_lsn_noguards.grd.nc"),
+            usn=xhermes.HypnotoadGrid(tmp / "example_usn.grd.nc"),
+            usn_noguards=xhermes.HypnotoadGrid(tmp / "example_usn_noguards.grd.nc"),
         ),
         dn_grids=dict(
-            cdn=tmp / "example_cdn.grd.nc",
-            cdn_noguards=tmp / "example_cdn_noguards.grd.nc",
-            ldn=tmp / "example_ldn.grd.nc",
-            ldn_noguards=tmp / "example_ldn_noguards.grd.nc",
-            udn2=tmp / "example_udn2.grd.nc",
-            udn2_noguards=tmp / "example_udn2_noguards.grd.nc",
+            cdn=xhermes.HypnotoadGrid(tmp / "example_cdn.grd.nc"),
+            cdn_noguards=xhermes.HypnotoadGrid(tmp / "example_cdn_noguards.grd.nc"),
+            ldn=xhermes.HypnotoadGrid(tmp / "example_ldn.grd.nc"),
+            ldn_noguards=xhermes.HypnotoadGrid(tmp / "example_ldn_noguards.grd.nc"),
+            udn2=xhermes.HypnotoadGrid(tmp / "example_udn2.grd.nc"),
+            udn2_noguards=xhermes.HypnotoadGrid(tmp / "example_udn2_noguards.grd.nc"),
         ),
     )
+
+    all_grids["sn_grids"]["lsn_removeguards"] = all_grids["sn_grids"][
+        "lsn"
+    ].remove_guards()
+    all_grids["dn_grids"]["cdn_removeguards"] = all_grids["dn_grids"][
+        "cdn"
+    ].remove_guards()
 
     return all_grids
 
@@ -95,11 +102,14 @@ def test_radial_slices(all_grids):
 
     grids = dict(
         lsn=all_grids["sn_grids"]["lsn"],
-        udn2=all_grids["dn_grids"]["cdn"],
+        lsn_removeguards=all_grids["sn_grids"]["lsn_removeguards"],
+        cdn=all_grids["dn_grids"]["cdn"],
+        cdn_removeguards=all_grids["dn_grids"]["cdn_removeguards"],
     )
 
     if selection_check_enabled:
-        ds_test = xhermes.HypnotoadGrid(all_grids["sn_grids"]["lsn"])
+        # All grids have the same radial selectors, so we can just check one of them
+        ds_test = all_grids["sn_grids"]["lsn"]
         available_selections = xhermes.selector_radial(ds_test, return_available=True)
         missing = [
             selection
@@ -133,22 +143,24 @@ def test_radial_slices(all_grids):
             gs = fig.add_gridspec(nrows, 2, width_ratios=[1, 1], hspace=0.5, wspace=0.1)
 
         for row, (name, grid) in enumerate(grids.items()):
+            if "guard" in selection and "removeguards" in name:
+                continue
+
             print(f"{name}, ", end="")
-            ds = xhermes.HypnotoadGrid(grid)
-            radial_selector = xhermes.selector_radial(ds, selection)
+            radial_selector = xhermes.selector_radial(grid, selection)
 
             if plot:
                 ax0 = fig.add_subplot(gs[row, 0])
                 ax1 = fig.add_subplot(gs[row, 1])
                 xhermes.plot_selection(
-                    ds,
+                    grid,
                     custom_selection=(radial_selector, slice(None)),
                     axes=[ax0, ax1],
                 )
                 ax0.set_title(f"{name}\nLogical")
                 ax1.set_title(f"{name}\nPoloidal")
 
-            R_test = ds["Rxy"][radial_selector, slice(None)]
+            R_test = grid["Rxy"][radial_selector, slice(None)]
 
             if generate_data:
                 if selection not in radial_Rcoords:
@@ -298,8 +310,8 @@ def test_poloidal_slices(all_grids):
 
     if selection_check_enabled:
         # Test if all selectors are present in test set
-        ds_test_sn = xhermes.HypnotoadGrid(all_grids["sn_grids"]["lsn"])
-        ds_test_dn = xhermes.HypnotoadGrid(all_grids["dn_grids"]["cdn"])
+        ds_test_sn = all_grids["sn_grids"]["lsn"]
+        ds_test_dn = all_grids["dn_grids"]["cdn"]
 
         missing = dict(sn=[], dn=[])
 
@@ -342,19 +354,20 @@ def test_poloidal_slices(all_grids):
                     nrows, 2, width_ratios=[1, 1], hspace=0.5, wspace=0.1
                 )
 
-            for row, (grid_name, path) in enumerate(grids.items()):
-                if "guards" in selection and "noguards" in grid_name:
+            for row, (grid_name, grid) in enumerate(grids.items()):
+                if "guards" in selection and (
+                    "noguards" in grid_name or "removeguards" in grid_name
+                ):
                     continue
                 print(f"{grid_name}, ", end="")
-                ds = xhermes.HypnotoadGrid(path)
-                poloidal_selector = xhermes.selector_poloidal(ds, selection)
+                poloidal_selector = xhermes.selector_poloidal(grid, selection)
 
                 # Generate plots for visual check
                 if plot:
                     ax0 = fig.add_subplot(gs[row, 0])
                     ax1 = fig.add_subplot(gs[row, 1])
                     xhermes.plot_selection(
-                        ds,
+                        grid,
                         custom_selection=(slice(None), poloidal_selector),
                         axes=[ax0, ax1],
                     )
@@ -362,7 +375,7 @@ def test_poloidal_slices(all_grids):
                     ax1.set_title(f"{grid_name}\nPoloidal")
 
                 # Generate test data and compare to expected
-                R_test = ds["Rxy"][slice(None), poloidal_selector]
+                R_test = grid["Rxy"][slice(None), poloidal_selector]
 
                 if generate_data:
                     if selection not in poloidal_Rcoords:

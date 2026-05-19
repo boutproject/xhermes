@@ -365,10 +365,10 @@ def selector_radial(ds, radial_region=None, return_available=False):
         "boundary_guard_xlow": m["MXG"] - 1,
         "boundary_xup": m["nxg"] - m["MXG"] - 1,
         "boundary_guard_xup": m["nxg"] - m["MXG"],
-        "sol": slice(m["ixseps1"], m["nxg"] - m["MXG"]),
-        "sol_guards": slice(m["ixseps1"], m["nxg"]),
-        "core": slice(m["MXG"], m["ixseps1"]),
-        "core_guards": slice(0, m["ixseps1"]),
+        "sol": slice(m["ixseps1g"], m["nxg"] - m["MXG"]),
+        "sol_guards": slice(m["ixseps1g"], m["nxg"]),
+        "core": slice(m["MXG"], m["ixseps1g"]),
+        "core_guards": slice(0, m["ixseps1g"]),
     }
 
     index["pfr"] = index["core"]
