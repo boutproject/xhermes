@@ -96,6 +96,7 @@ def plot_grid(
     xlim=(None, None),
     ylim=(None, None),
     plot_region_boundaries=True,
+    plot_regions=True,
     legend=True,
     title="",
     linecolor="black",
@@ -154,6 +155,33 @@ def plot_grid(
     ])
     norm = mpl.colors.BoundaryNorm(np.arange(-0.5, cmap.N + 0.5, 1), cmap.N)
 
+    if plot_regions and plot_region_boundaries:
+        raise ValueError(
+            "Cannot plot both regions and region boundaries at the same time, please choose one or the other."
+        )
+
+    def apply_color(color_idx):
+        if "single" in ds.metadata["topology"]:
+            color_idx[selector_2d(ds, "sol", "sol")] = 1
+            color_idx[selector_2d(ds, "sol", "inner_divertor")] = 2
+            color_idx[selector_2d(ds, "sol", "outer_divertor")] = 3
+            color_idx[selector_2d(ds, "core", "pfr")] = 4
+            color_idx[selector_2d(ds, "core", "core")] = 5
+
+        elif "double" in ds.metadata["topology"]:
+            color_idx[selector_2d(ds, "sol", "sol")] = 1
+            color_idx[selector_2d(ds, "sol", "inner_lower_divertor")] = 2
+            color_idx[selector_2d(ds, "sol", "inner_upper_divertor")] = 3
+            color_idx[selector_2d(ds, "sol", "outer_upper_divertor")] = 4
+            color_idx[selector_2d(ds, "sol", "outer_lower_divertor")] = 5
+            color_idx[selector_2d(ds, "core", "pfr")] = 6
+            color_idx[selector_2d(ds, "core", "core")] = 7
+
+        else:
+            raise ValueError(f"Unknown topology: {ds.metadata['topology']}")
+
+        return color_idx
+
     # Handle different naming conventions in grid and xBOUT dataset
     if "Rxy" in ds.keys():
         Rname = "Rxy"
@@ -211,6 +239,9 @@ def plot_grid(
 
         color_idx = np.zeros((Nx, Ny), dtype=int)
 
+        if plot_regions:
+            color_idx = apply_color(color_idx)
+
         if plot_region_boundaries:
             color_idx[:, m["jyseps1_1g"]] = 1
             color_idx[:, m["jyseps1_2g"]] = 2
@@ -236,20 +267,6 @@ def plot_grid(
                     markeredgecolor="yellow",
                     zorder=100,
                 )
-
-            # Plot selection
-            ax.plot(
-                ds[Rname][selection],
-                ds[Zname][selection],
-                label="selection",
-                lw=0,
-                alpha=1,
-                ms=ms_selection / 5,
-                marker="o",
-                c=cmap(8),
-                markeredgecolor="yellow",
-                zorder=100,
-            )
 
             # Plot separatrix
             ax.plot(
@@ -303,14 +320,18 @@ def plot_grid(
         X, Y = np.meshgrid(y, x)
         color = np.zeros_like(X)
 
-        color[:, m["jyseps1_1g"]] = 1
-        color[:, m["jyseps1_2g"]] = 2
-        color[:, m["jyseps2_1g"]] = 3
-        color[:, m["jyseps2_2g"]] = 4
-        color[:, m["ny_innerg"]] = 5
-        color[m["ixseps1g"], :] = 6
-        if "single-null" not in m["topology"]:
-            color[m["ixseps2g"], :] = 7
+        if plot_regions:
+            color_idx = apply_color(color)
+
+        if plot_region_boundaries:
+            color[:, m["jyseps1_1g"]] = 1
+            color[:, m["jyseps1_2g"]] = 2
+            color[:, m["jyseps2_1g"]] = 3
+            color[:, m["jyseps2_2g"]] = 4
+            color[:, m["ny_innerg"]] = 5
+            color[m["ixseps1g"], :] = 6
+            if "single-null" not in m["topology"]:
+                color[m["ixseps2g"], :] = 7
 
         if selection != None:
             ax.plot(
@@ -337,26 +358,66 @@ def plot_grid(
             color="k",
         )
 
-        ax.set_xlabel("Y index")
-        ax.set_ylabel("X index")
+        ax.set_xlabel("X index")
+        ax.set_ylabel("Y index")
 
-    legend_handles = [
-        mpl.lines.Line2D([0], [0], label="jyseps1_1g", color=cmap(1)),
-        mpl.lines.Line2D([0], [0], label="jyseps1_2g", color=cmap(2)),
-        mpl.lines.Line2D([0], [0], label="jyseps2_1g", color=cmap(3)),
-        mpl.lines.Line2D([0], [0], label="jyseps2_2g", color=cmap(4)),
-        mpl.lines.Line2D([0], [0], label="ny_innerg", color=cmap(5)),
-        mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
-        mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
-        mpl.lines.Line2D(
-            [0],
-            [0],
-            label="Selection",
-            color=cmap(8),
-            marker="o",
-            markeredgecolor="yellow",
-        ),
-    ]
+    if plot_region_boundaries:
+        legend_handles = [
+            mpl.lines.Line2D([0], [0], label="jyseps1_1g", color=cmap(1)),
+            mpl.lines.Line2D([0], [0], label="jyseps1_2g", color=cmap(2)),
+            mpl.lines.Line2D([0], [0], label="jyseps2_1g", color=cmap(3)),
+            mpl.lines.Line2D([0], [0], label="jyseps2_2g", color=cmap(4)),
+            mpl.lines.Line2D([0], [0], label="ny_innerg", color=cmap(5)),
+            mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
+            mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
+            mpl.lines.Line2D(
+                [0],
+                [0],
+                label="Selection",
+                color=cmap(8),
+                marker="o",
+                markeredgecolor="yellow",
+            ),
+        ]
+
+    else:
+        if "single" in ds.metadata["topology"]:
+            legend_handles = [
+                mpl.lines.Line2D([0], [0], label="SOL", color=cmap(1)),
+                mpl.lines.Line2D([0], [0], label="Inner divertor", color=cmap(2)),
+                mpl.lines.Line2D([0], [0], label="Outer divertor", color=cmap(3)),
+                mpl.lines.Line2D([0], [0], label="PFR", color=cmap(4)),
+                mpl.lines.Line2D([0], [0], label="Core", color=cmap(5)),
+                # mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
+                # mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
+                mpl.lines.Line2D(
+                    [0],
+                    [0],
+                    label="Selection",
+                    color=cmap(8),
+                    marker="o",
+                    markeredgecolor="yellow",
+                ),
+            ]
+
+        elif "double" in ds.metadata["topology"]:
+            legend_handles = [
+                mpl.lines.Line2D([0], [0], label="SOL", color=cmap(1)),
+                mpl.lines.Line2D([0], [0], label="Inner divertor", color=cmap(2)),
+                mpl.lines.Line2D([0], [0], label="Outer divertor", color=cmap(3)),
+                mpl.lines.Line2D([0], [0], label="PFR", color=cmap(4)),
+                mpl.lines.Line2D([0], [0], label="Core", color=cmap(5)),
+                # mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
+                # mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
+                mpl.lines.Line2D(
+                    [0],
+                    [0],
+                    label="Selection",
+                    color=cmap(8),
+                    marker="o",
+                    markeredgecolor="yellow",
+                ),
+            ]
 
     if legend:
         ax.legend(handles=legend_handles, loc="best", ncols=2, fontsize="xx-small")
