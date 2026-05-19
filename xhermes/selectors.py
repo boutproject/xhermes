@@ -453,7 +453,25 @@ def selector_2d(ds, radial_region, poloidal_region):
             "Core and PFR regions don't extend to the outer boundary."
         )
 
-    return (select_radial(ds, radial_region), select_poloidal(ds, poloidal_region))
+    radial_selection = selector_radial(ds, radial_region)
+    poloidal_selection = selector_poloidal(ds, poloidal_region)
+
+    if (
+        isinstance(radial_selection, np.ndarray)
+        and isinstance(poloidal_selection, np.ndarray)
+        and radial_selection.size > 1
+        and poloidal_selection.size > 1
+    ):
+        message = (
+            "Cannot combine radial and poloidal selections when both resolve to "
+            "non-contiguous index arrays. This produces unsupported paired advanced "
+            "indexing rather than a 2D region. Use two-pass handling instead, for "
+            "example plot the X and Y selections separately or clear guards in two passes."
+        )
+        print(message)
+        raise ValueError(message)
+
+    return (radial_selection, poloidal_selection)
 
 
 def _select_region(ds, radial_region=None, poloidal_region=None, custom_selection=None):
