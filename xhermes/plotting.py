@@ -180,7 +180,7 @@ def plot_grid(
             if "single-null" not in m["topology"]:
                 color_idx[m["ixseps2"], :] = 7
 
-            # Plot selection
+            # Plot selection: color patches deeppink in RZ mode
             if selection != None:
                 color_idx[selection] = 8
                 ax.plot(
@@ -257,7 +257,6 @@ def plot_grid(
             color[m["ixseps2"], :] = 7
 
         if selection != None:
-            color[selection] = 8
             ax.plot(
                 Y[selection],
                 X[selection],
@@ -304,7 +303,7 @@ def plot_grid(
     ]
 
     if legend:
-        ax.legend(handles=legend_handles, loc="best", ncols=2)
+        ax.legend(handles=legend_handles, loc="best", ncols=2, fontsize="xx-small")
 
     ax.set_axisbelow(True)
     ax.grid(False)
