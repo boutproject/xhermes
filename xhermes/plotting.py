@@ -96,7 +96,7 @@ def plot_grid(
     xlim=(None, None),
     ylim=(None, None),
     plot_region_boundaries=True,
-    plot_regions=True,
+    plot_regions=False,
     legend=True,
     title="",
     linecolor="black",
