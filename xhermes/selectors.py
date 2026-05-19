@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def select_poloidal(ds, name=None, return_available=False):
+def selector_poloidal(ds, name=None, return_available=False):
     """
 
     Returns poloidal indices for named regions within a dataset.
@@ -333,7 +333,7 @@ def select_poloidal(ds, name=None, return_available=False):
         )
 
 
-def select_radial(ds, radial_region=None, return_available=False):
+def selector_radial(ds, radial_region=None, return_available=False):
     """
 
     Return a slice of radial indices for a given radial region.
@@ -393,7 +393,7 @@ def select_radial(ds, radial_region=None, return_available=False):
     )
 
 
-def select_2d(ds, radial_region, poloidal_region):
+def selector_2d(ds, radial_region, poloidal_region):
     """
 
     Combines radial and poloidal selection with special handling of incompatible combinations (e.g., SOL and inner boundary).
@@ -407,7 +407,7 @@ def select_2d(ds, radial_region, poloidal_region):
     radial_region : str
         Name of the radial region to select (e.g., "domain", "domain_guards", "boundary", "boundary_guard").
     poloidal_region : str
-        Name of the poloidal region to select (see xhermes.selectors.select_poloidal for options).
+        Name of the poloidal region to select (see xhermes.selectors.selector_poloidal for options).
 
     Returns
     -------
@@ -463,9 +463,9 @@ def _select_region(ds, radial_region=None, poloidal_region=None, custom_selectio
     Parameters
     ----------
     poloidal_region : str
-        Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
+        Poloidal region name to select. See xhermes.selectors.selector_poloidal.
     radial_region : str
-        Radial region name to select. See xhermes.selectors.slice_2d.
+        Radial region name to select. See xhermes.selectors.selector_2d.
     custom_selection : tuple of slices, optional
         Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
         If provided, this will override the radial_region and poloidal_region parameters.
@@ -478,6 +478,6 @@ def _select_region(ds, radial_region=None, poloidal_region=None, custom_selectio
     if custom_selection is not None:
         selection = custom_selection
     else:
-        selection = select_2d(ds, radial_region, poloidal_region)
+        selection = selector_2d(ds, radial_region, poloidal_region)
 
     return ds.isel(x=selection[0], theta=selection[1])
