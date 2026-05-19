@@ -5,7 +5,7 @@ import copy
 import numpy as np
 from netCDF4 import Dataset as ncDataset
 from xbout.region import _get_topology
-from .selectors import get_poloidal_slices
+from .selectors import get_poloidal_selections, get_poloidal_slices
 
 
 def open_hermesdataset(
@@ -353,7 +353,7 @@ def open_hermesdataset(
         meta["geometry_extracted"] = True
 
     # Add poloidal slices to metadata for easy access by selectors and other tools
-    meta["poloidal_slices"] = get_poloidal_slices(ds)
+    meta["poloidal_selections"] = get_poloidal_selections(ds)
     # Put back into dataset
     ds.attrs["metadata"] = meta
 
