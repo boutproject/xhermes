@@ -29,7 +29,6 @@ def selector_poloidal(ds, name=None, return_available=False):
     j2_2g = m["jyseps2_2g"]
     ixseps1g = m["ixseps1g"]
     MYG = m["MYG"]
-    MYG_half = int(MYG / 2)
     nyg = m["nyg"]
     ny_innerg = m["ny_innerg"]
     topology = m["topology"]
