@@ -347,7 +347,7 @@ def open_hermesdataset(
     if num_dims == 1:
         ds = ds.hermes.extract_1d_tokamak_geometry()
         meta["geometry_extracted"] = True
-    else:
+    elif ds.attrs.get("geometry") == "toroidal":
         # Right now everything in the 2D function applies to 3D as well
         ds = ds.hermes.extract_2d_tokamak_geometry()
         meta["geometry_extracted"] = True
