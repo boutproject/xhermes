@@ -13,7 +13,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
     def __init__(self, ds):
         super().__init__(ds)
 
-    def select_region(self, name):
+    def select_region(self, name, guards=False):
         """
         Select a radial/poloidal region from the dataset
 
@@ -21,13 +21,15 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ----------
         name : str
             Region name to select. Must be compatible with `slice_2d`.
+        guards : bool, optional
+            Whether to include guard cells in the selection. Default is False.
 
         Returns
         -------
         xarray.Dataset
             Dataset with data selected for the specified region
         """
-        selection = slice_2d(self.data, name)
+        selection = slice_2d(self.data, name, guards=guards)
         return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
@@ -311,7 +313,7 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
 
         return ds
 
-    def select_region(self, name):
+    def select_region(self, name, guards=False):
         """
         Select a radial/poloidal region from the DataArray
 
@@ -319,13 +321,15 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
         ----------
         name : str
             Region name to select. Must be compatible with `slice_2d`.
+        guards : bool, optional
+            Whether to include guard cells in the selection. Default is False.
 
         Returns
         -------
         xarray.DataArray
             DataArray with data selected for the specified region
         """
-        selection = slice_2d(self.data, name)
+        selection = slice_2d(self.data, name, guards=guards)
         return self.data.isel(x=selection[0], theta=selection[1])
 
     def unnormalise(self):
