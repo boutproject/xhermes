@@ -1,6 +1,14 @@
 import numpy as np
 
 
+def _selector_to_indices(selector, size):
+    if isinstance(selector, slice):
+        start, stop, step = selector.indices(size)
+        return np.arange(start, stop, step, dtype=int)
+
+    return selector
+
+
 def get_poloidal_slices(ds):
     """
 
@@ -17,7 +25,8 @@ def get_poloidal_slices(ds):
     Returns
     -------
     dict
-        Dictionary containing integer indices or slices describing the required poloidal regions.
+        Dictionary containing integer indices or integer arrays describing the
+        required poloidal regions.
     """
 
     m = ds.metadata
@@ -27,10 +36,8 @@ def get_poloidal_slices(ds):
     j2_1g = m["jyseps2_1g"]
     j2_2g = m["jyseps2_2g"]
     ixseps1 = m["ixseps1"]
-    MXG = m["MXG"]
     MYG = m["MYG"]
     MYG_half = int(MYG / 2)
-    nxg = m["nxg"]
     nyg = m["nyg"]
     ny_innerg = m["ny_innerg"]
     topology = m["topology"]
@@ -243,7 +250,9 @@ def get_poloidal_slices(ds):
                 slice(nyg - MYG, nyg),
             ]
 
-    return index
+    return {
+        name: _selector_to_indices(selector, nyg) for name, selector in index.items()
+    }
 
 
 def slice_2d(ds, name, guards=False):
@@ -377,5 +386,8 @@ def slice_2d(ds, name, guards=False):
     # Poloidal selections
     if name in m["poloidal_slices"]:
         slices[name] = (slice_x_domain, m["poloidal_slices"][name])
+
+    if name not in slices:
+        raise ValueError(f"Unknown slice name: {name}")
 
     return slices[name]
