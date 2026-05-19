@@ -134,7 +134,7 @@ def plot_grid(
 
     m = ds.metadata
 
-    if ax == None:
+    if ax is None:
         fig, ax = plt.subplots()
 
     # Marker size for selection plot
@@ -253,7 +253,7 @@ def plot_grid(
                 color_idx[m["ixseps2g"], :] = 7
 
             # Plot selection: color patches deeppink in RZ mode
-            if selection != None:
+            if selection is not None:
                 color_idx[selection] = 8
                 ax.plot(
                     ds[Rname][selection],
@@ -333,7 +333,7 @@ def plot_grid(
             if "single-null" not in m["topology"]:
                 color[m["ixseps2g"], :] = 7
 
-        if selection != None:
+        if selection is not None:
             ax.plot(
                 Y[selection],
                 X[selection],
