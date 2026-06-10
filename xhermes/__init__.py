@@ -4,12 +4,19 @@ __all__ = [
     "HypnotoadGrid",
     "HermesDatasetAccessor",
     "HermesDataArrayAccessor",
-    "slice_poloidal",
-    "slice_2d",
+    "selector_poloidal",
+    "selector_radial",
+    "selector_2d",
+    "plot_selection",
+    "plot_grid",
     "plot_region",
     "plot_rz_grid",
 ]
-from .load import open_hermesdataset, open, HypnotoadGrid
-from .accessors import HermesDatasetAccessor, HermesDataArrayAccessor
-from .selectors import slice_poloidal, slice_2d
-from .plotting import plot_region, plot_rz_grid
+from .accessors import HermesDataArrayAccessor, HermesDatasetAccessor
+from .load import HypnotoadGrid, open, open_hermesdataset
+from .plotting import plot_grid, plot_selection
+from .selectors import (
+    selector_2d,
+    selector_poloidal,
+    selector_radial,
+)

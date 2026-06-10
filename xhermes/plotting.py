@@ -1,36 +1,94 @@
-import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from .selectors import slice_2d
+import numpy as np
+
+from .selectors import selector_2d
 
 
-def plot_region(ds, region_name, dpi=150, title=""):
+def plot_selection(
+    ds,
+    radial_region=None,
+    poloidal_region=None,
+    custom_selection=None,
+    dpi=150,
+    title="",
+    axes=None,
+):
     """
-    Visualises selected grid region over a logical and poloidal grid plot
+    Visualises selected grid region over a logical and poloidal grid plot.
+    Takes the name of the poloidal and radial regions and passes them to slice_2d.
+    Alternatively, can use a custom selection tuple compatible with NumPy 2D indexing.
 
     Parameters
     ds : dict-like
         Either a Hermes-3 results dataset or a HypnotoadGrid object. Needs to have
         metadata with region boundaries, and Rxy, Zxy and their corner coordinates
         as keys.
-    region_name : str
-        Region name to show. Must be compatible with `slice_2d`.
+    poloidal_region : str, optional
+        Name of the poloidal region to select (see xhermes.selectors.get_poloidal_slices for options).
+        If None, please pass a custom_selection, which should be a tuple of (radial_sel, poloidal_sel)
+        compatible with NumPy 2D indexing.
+    radial_region : str, optional
+        Name of the radial region to select (e.g., "domain", "domain_guards", "inner_boundary",
+        "inner_guard", "outer_boundary", "outer_guard").
+        If None, please pass a custom_selection, which should be a tuple of (radial_sel, poloidal_sel)
+        compatible with NumPy 2D indexing.
+    custom_selection : tuple of (radial_sel, poloidal_sel), optional
+        If poloidal_region or radial_region are None, you can pass a custom selection tuple compatible
+        with NumPy 2D indexing.
+    dpi : int, optional
+        Dots per inch for the figure. Higher values give better quality but larger file size.
+    title : str, optional
+        Title for the figure. Default is an empty string.
     """
 
-    fig, axes = plt.subplots(1, 2, figsize=(8, 6), dpi=dpi)
+    if custom_selection is None:
+        if poloidal_region is None and radial_region is None:
+            raise ValueError(
+                "Must provide both poloidal_region and radial_region, or pass custom_selection."
+            )
+        if poloidal_region is None or radial_region is None:
+            raise ValueError(
+                "poloidal_region and radial_region must be provided together."
+            )
+    else:
+        if poloidal_region is not None or radial_region is not None:
+            raise ValueError(
+                "Pass either poloidal_region/radial_region or custom_selection, not both."
+            )
+        if (
+            not isinstance(custom_selection, (tuple, list))
+            or len(custom_selection) != 2
+        ):
+            raise ValueError(
+                "custom_selection must be a 2-item tuple/list of (radial_sel, poloidal_sel)."
+            )
 
-    selection = slice_2d(ds, region_name)
+    if custom_selection is not None:
+        selection = custom_selection
+    else:
+        selection = selector_2d(ds, radial_region, poloidal_region)
 
-    plot_rz_grid(ds, mode="logical", selection=selection, ax=axes[0])
-    plot_rz_grid(ds, mode="poloidal", selection=selection, ax=axes[1], legend=False)
+    if axes is None:
+        fig, axes = plt.subplots(1, 2, figsize=(6, 4), dpi=dpi)
+        own_fig = True
+    else:
+        if len(axes) != 2 or any(not hasattr(axis, "get_figure") for axis in axes):
+            raise ValueError("axes must contain exactly two matplotlib Axes objects.")
+        fig = axes[0].get_figure()
+        own_fig = False
+
+    plot_grid(ds, mode="logical", selection=selection, ax=axes[0])
+    plot_grid(ds, mode="poloidal", selection=selection, ax=axes[1], legend=False)
     axes[0].set_title("Logical grid")
     axes[1].set_title("Poloidal grid")
-    fig.tight_layout()
-    fig.suptitle(title, y=1.03)
-    plt.show()
+    if own_fig:
+        fig.tight_layout()
+        fig.suptitle(title, y=1.03)
+        plt.show()
 
 
-def plot_rz_grid(
+def plot_grid(
     ds,
     selection=None,
     mode="logical",
@@ -38,10 +96,11 @@ def plot_rz_grid(
     xlim=(None, None),
     ylim=(None, None),
     plot_region_boundaries=True,
+    plot_regions=False,
     legend=True,
     title="",
-    linecolor="grey",
-    linewidth=0.2,
+    linecolor="black",
+    linewidth=0.05,
 ):
     """
     Create a 2D polygon plot of a Hermes-3 grid
@@ -52,7 +111,7 @@ def plot_rz_grid(
         Either a Hermes-3 results dataset or a HypnotoadGrid object. Needs to have
         metadata with region boundaries, and Rxy, Zxy and their corner coordinates
         as keys.
-    selection : (poloidal_sel, radial_sel)
+    selection : (radial_sel, poloidal_sel)
         Two-element tuple of int or slice specifying the row and column
         selectors, compatible with NumPy 2D indexing.
     mode : "logical" shows grid in index space. "poloidal" shows R,Z space.
@@ -95,6 +154,33 @@ def plot_rz_grid(
         "deeppink",
     ])
     norm = mpl.colors.BoundaryNorm(np.arange(-0.5, cmap.N + 0.5, 1), cmap.N)
+
+    if plot_regions and plot_region_boundaries:
+        raise ValueError(
+            "Cannot plot both regions and region boundaries at the same time, please choose one or the other."
+        )
+
+    def apply_color(color_idx):
+        if "single" in ds.metadata["topology"]:
+            color_idx[selector_2d(ds, "sol", "sol")] = 1
+            color_idx[selector_2d(ds, "sol", "inner_divertor")] = 2
+            color_idx[selector_2d(ds, "sol", "outer_divertor")] = 3
+            color_idx[selector_2d(ds, "core", "pfr")] = 4
+            color_idx[selector_2d(ds, "core", "core")] = 5
+
+        elif "double" in ds.metadata["topology"]:
+            color_idx[selector_2d(ds, "sol", "sol")] = 1
+            color_idx[selector_2d(ds, "sol", "inner_lower_divertor")] = 2
+            color_idx[selector_2d(ds, "sol", "inner_upper_divertor")] = 3
+            color_idx[selector_2d(ds, "sol", "outer_upper_divertor")] = 4
+            color_idx[selector_2d(ds, "sol", "outer_lower_divertor")] = 5
+            color_idx[selector_2d(ds, "core", "pfr")] = 6
+            color_idx[selector_2d(ds, "core", "core")] = 7
+
+        else:
+            raise ValueError(f"Unknown topology: {ds.metadata['topology']}")
+
+        return color_idx
 
     # Handle different naming conventions in grid and xBOUT dataset
     if "Rxy" in ds.keys():
@@ -153,17 +239,20 @@ def plot_rz_grid(
 
         color_idx = np.zeros((Nx, Ny), dtype=int)
 
+        if plot_regions:
+            color_idx = apply_color(color_idx)
+
         if plot_region_boundaries:
             color_idx[:, m["jyseps1_1g"]] = 1
             color_idx[:, m["jyseps1_2g"]] = 2
             color_idx[:, m["jyseps2_1g"]] = 3
             color_idx[:, m["jyseps2_2g"]] = 4
             color_idx[:, m["ny_innerg"]] = 5
-            color_idx[m["ixseps1"], :] = 6
+            color_idx[m["ixseps1g"], :] = 6
             if "single-null" not in m["topology"]:
-                color_idx[m["ixseps2"], :] = 7
+                color_idx[m["ixseps2g"], :] = 7
 
-            # Plot selection
+            # Plot selection: color patches deeppink in RZ mode
             if selection is not None:
                 color_idx[selection] = 8
                 ax.plot(
@@ -179,26 +268,27 @@ def plot_rz_grid(
                     zorder=100,
                 )
 
+            # Plot separatrix
             ax.plot(
-                ds[Rname][m["ixseps1"], :],
-                ds[Zname][m["ixseps1"], :],
-                label="ixseps1",
+                ds[Rname][m["ixseps1g"], :],
+                ds[Zname][m["ixseps1g"], :],
+                label="ixseps1g",
                 lw=0,
                 alpha=1,
                 ms=2,
-                marker="o",
+                marker=None,
                 c=cmap(5),
             )
 
             if "single-null" not in m["topology"]:
                 ax.plot(
-                    ds[Rname][m["ixseps2"], :],
-                    ds[Zname][m["ixseps2"], :],
-                    label="ixseps2",
+                    ds[Rname][m["ixseps2g"], :],
+                    ds[Zname][m["ixseps2g"], :],
+                    label="ixseps2g",
                     lw=0,
                     alpha=1,
                     ms=2,
-                    marker="o",
+                    marker=None,
                     c=cmap(6),
                 )
 
@@ -230,17 +320,20 @@ def plot_rz_grid(
         X, Y = np.meshgrid(y, x)
         color = np.zeros_like(X)
 
-        color[:, m["jyseps1_1g"]] = 1
-        color[:, m["jyseps1_2g"]] = 2
-        color[:, m["jyseps2_1g"]] = 3
-        color[:, m["jyseps2_2g"]] = 4
-        color[:, m["ny_innerg"]] = 5
-        color[m["ixseps1"], :] = 6
-        if "single-null" not in m["topology"]:
-            color[m["ixseps2"], :] = 7
+        if plot_regions:
+            color_idx = apply_color(color)
+
+        if plot_region_boundaries:
+            color[:, m["jyseps1_1g"]] = 1
+            color[:, m["jyseps1_2g"]] = 2
+            color[:, m["jyseps2_1g"]] = 3
+            color[:, m["jyseps2_2g"]] = 4
+            color[:, m["ny_innerg"]] = 5
+            color[m["ixseps1g"], :] = 6
+            if "single-null" not in m["topology"]:
+                color[m["ixseps2g"], :] = 7
 
         if selection is not None:
-            color[selection] = 8
             ax.plot(
                 Y[selection],
                 X[selection],
@@ -260,34 +353,74 @@ def plot_rz_grid(
             color,
             cmap=cmap,
             norm=norm,
-            linewidth=0.1,
+            linewidth=linewidth,
             antialiased=True,
             color="k",
         )
 
-        ax.set_xlabel("Y index")
-        ax.set_ylabel("X index")
+        ax.set_xlabel("X index")
+        ax.set_ylabel("Y index")
 
-    legend_handles = [
-        mpl.lines.Line2D([0], [0], label="jyseps1_1g", color=cmap(1)),
-        mpl.lines.Line2D([0], [0], label="jyseps1_2g", color=cmap(2)),
-        mpl.lines.Line2D([0], [0], label="jyseps2_1g", color=cmap(3)),
-        mpl.lines.Line2D([0], [0], label="jyseps2_2g", color=cmap(4)),
-        mpl.lines.Line2D([0], [0], label="ny_innerg", color=cmap(5)),
-        mpl.lines.Line2D([0], [0], label="ixseps1", color=cmap(6)),
-        mpl.lines.Line2D([0], [0], label="ixseps2", color=cmap(7)),
-        mpl.lines.Line2D(
-            [0],
-            [0],
-            label="Selection",
-            color=cmap(8),
-            marker="o",
-            markeredgecolor="yellow",
-        ),
-    ]
+    if plot_region_boundaries:
+        legend_handles = [
+            mpl.lines.Line2D([0], [0], label="jyseps1_1g", color=cmap(1)),
+            mpl.lines.Line2D([0], [0], label="jyseps1_2g", color=cmap(2)),
+            mpl.lines.Line2D([0], [0], label="jyseps2_1g", color=cmap(3)),
+            mpl.lines.Line2D([0], [0], label="jyseps2_2g", color=cmap(4)),
+            mpl.lines.Line2D([0], [0], label="ny_innerg", color=cmap(5)),
+            mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
+            mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
+            mpl.lines.Line2D(
+                [0],
+                [0],
+                label="Selection",
+                color=cmap(8),
+                marker="o",
+                markeredgecolor="yellow",
+            ),
+        ]
+
+    else:
+        if "single" in ds.metadata["topology"]:
+            legend_handles = [
+                mpl.lines.Line2D([0], [0], label="SOL", color=cmap(1)),
+                mpl.lines.Line2D([0], [0], label="Inner divertor", color=cmap(2)),
+                mpl.lines.Line2D([0], [0], label="Outer divertor", color=cmap(3)),
+                mpl.lines.Line2D([0], [0], label="PFR", color=cmap(4)),
+                mpl.lines.Line2D([0], [0], label="Core", color=cmap(5)),
+                # mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
+                # mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
+                mpl.lines.Line2D(
+                    [0],
+                    [0],
+                    label="Selection",
+                    color=cmap(8),
+                    marker="o",
+                    markeredgecolor="yellow",
+                ),
+            ]
+
+        elif "double" in ds.metadata["topology"]:
+            legend_handles = [
+                mpl.lines.Line2D([0], [0], label="SOL", color=cmap(1)),
+                mpl.lines.Line2D([0], [0], label="Inner divertor", color=cmap(2)),
+                mpl.lines.Line2D([0], [0], label="Outer divertor", color=cmap(3)),
+                mpl.lines.Line2D([0], [0], label="PFR", color=cmap(4)),
+                mpl.lines.Line2D([0], [0], label="Core", color=cmap(5)),
+                # mpl.lines.Line2D([0], [0], label="ixseps1g", color=cmap(6)),
+                # mpl.lines.Line2D([0], [0], label="ixseps2g", color=cmap(7)),
+                mpl.lines.Line2D(
+                    [0],
+                    [0],
+                    label="Selection",
+                    color=cmap(8),
+                    marker="o",
+                    markeredgecolor="yellow",
+                ),
+            ]
 
     if legend:
-        ax.legend(handles=legend_handles, loc="best", ncols=2)
+        ax.legend(handles=legend_handles, loc="best", ncols=2, fontsize="xx-small")
 
     ax.set_axisbelow(True)
     ax.grid(False)

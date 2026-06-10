@@ -16,4 +16,3 @@ jobs:
         run: ruff format --check --preview --output-format=github
       - name: Run ruff
         run: ruff check xhermes --output-format=github
-        

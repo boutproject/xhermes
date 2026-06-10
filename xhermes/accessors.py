@@ -1,7 +1,8 @@
 import numpy as np
-from xarray import register_dataset_accessor, register_dataarray_accessor
-from xbout import BoutDatasetAccessor, BoutDataArrayAccessor
-from .selectors import slice_2d
+from xarray import register_dataarray_accessor, register_dataset_accessor
+from xbout import BoutDataArrayAccessor, BoutDatasetAccessor
+
+from .selectors import _select_region, selector_poloidal, selector_radial
 
 
 @register_dataset_accessor("hermes")
@@ -13,22 +14,30 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
     def __init__(self, ds):
         super().__init__(ds)
 
-    def select_region(self, name):
+    def select_region(
+        self, radial_region=None, poloidal_region=None, custom_selection=None
+    ):
         """
         Select a radial/poloidal region from the dataset
 
         Parameters
         ----------
-        name : str
-            Region name to select. Must be compatible with `slice_2d`.
+        poloidal_region : str
+            Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
+        radial_region : str
+            Radial region name to select. See xhermes.selectors.slice_2d.
+        custom_selection : tuple of slices, optional
+            Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
+            If provided, this will override the radial_region and poloidal_region parameters.
 
         Returns
         -------
         xarray.Dataset
-            Dataset with data selected for the specified region
+            Dataset with data selected for the specified region.
         """
-        selection = slice_2d(self.data, name)
-        return self.data.isel(x=selection[0], theta=selection[1])
+        return _select_region(
+            self.data, radial_region, poloidal_region, custom_selection
+        )
 
     def unnormalise(self):
         """
@@ -72,6 +81,12 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         - Dataset with the new geometry
         """
         ds = self.data.squeeze()  # Get rid of 1-length dimensions
+        m = ds.metadata
+
+        if m["geometry_extracted"]:
+            raise Exception(
+                "extract_1d_tokamak_geometry was called twice! Note: this is now done automatically upon loading"
+            )
 
         # Reconstruct grid position (pos, as in position) from dy
         dy = ds.coords["dy"].values
@@ -153,6 +168,11 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds = self.data.squeeze()
         m = ds.metadata
 
+        if m["geometry_extracted"]:
+            raise Exception(
+                "extract_2d_tokamak_geometry was called twice! Note: this is now done automatically upon loading"
+            )
+
         if "topology" not in m:
             raise Exception(
                 "2D Tokamak topology missing from metadata. Please load model with the flag geometry = 'toroidal' and provide grid"
@@ -202,6 +222,15 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
 
+        # If guard cells have been removed, the separatrix index must be shifted back.
+        # This assumes that there are always 2 X guards.
+        if m["MXG"] == 0:
+            m["ixseps1g"] = m["ixseps1"] - 2
+            m["ixseps2g"] = m["ixseps2"] - 2
+        else:
+            m["ixseps1g"] = m["ixseps1"]
+            m["ixseps2g"] = m["ixseps2"]
+
         # Array of radial (x) indices and of poloidal (y) indices for each cell
         # This is useful because Xarray makes it awkward to extract indices in certain cases
         ds["x_idx"] = (
@@ -233,7 +262,7 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds["dr"].attrs.update({
             "conversion": 1,
             "units": "m",
-            "standard_name": "radial length",
+            "standard_name": "radial cell length",
             "long_name": "Length of cell in the radial direction",
             "source": "xHermes",
         })
@@ -242,20 +271,32 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds["hthe"].attrs.update({
             "conversion": 1,
             "units": "m/radian",
-            "standard_name": "h_theta: poloidal arc length per radian",
-            "long_name": "h_theta: poloidal arc length per radian",
+            "standard_name": "h_theta: poloidal arc cell length per radian",
+            "long_name": "h_theta: poloidal arc cell length per radian",
             "source": "xHermes",
         })
 
-        ds["dl"] = (
+        ds["dpol"] = (
             ["x", "theta"],
             ds["dy"].data * ds["hthe"].data,
-        )  # poloidal arc length
-        ds["dl"].attrs.update({
+        )  # Poloidal cell length
+        ds["dpol"].attrs.update({
             "conversion": 1,
             "units": "m",
-            "standard_name": "poloidal arc length",
-            "long_name": "Poloidal arc length",
+            "standard_name": "Poloidal cell length",
+            "long_name": "Poloidal cell length",
+            "source": "xHermes",
+        })
+
+        ds["dtor"] = (
+            ["x", "theta"],
+            ds["dz"].data * np.sqrt(ds["g_33"].data),
+        )  # Toroidal cell length
+        ds["dtor"].attrs.update({
+            "conversion": 1,
+            "units": "m",
+            "standard_name": "Toroidal cell length",
+            "long_name": "Toroidal cell length",
             "source": "xHermes",
         })
 
@@ -277,33 +318,41 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
         """
 
         # Clear radial guards
-        xguards = slice_2d(self.data, "xguards")
+        xguards = selector_radial(self.data, "xguards")
         ds = self.data.copy()
-        ds[{"x": xguards[0], "theta": xguards[1]}] = np.nan
+        ds[{"x": xguards, "theta": slice(None)}] = np.nan
 
         # Clear target guards if they exist
         if self.data.metadata["MYG"] > 0:
-            yguards = slice_2d(self.data, "yguards")
-            ds[{"x": yguards[0], "theta": yguards[1]}] = np.nan
+            yguards = selector_poloidal(self.data, "yguards")
+            ds[{"x": slice(None), "theta": yguards}] = np.nan
 
         return ds
 
-    def select_region(self, name):
+    def select_region(
+        self, radial_region=None, poloidal_region=None, custom_selection=None
+    ):
         """
-        Select a radial/poloidal region from the DataArray
+        Select a radial/poloidal region from the dataarray
 
         Parameters
         ----------
-        name : str
-            Region name to select. Must be compatible with `slice_2d`.
+        poloidal_region : str
+            Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
+        radial_region : str
+            Radial region name to select. See xhermes.selectors.slice_2d.
+        custom_selection : tuple of slices, optional
+            Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
+            If provided, this will override the radial_region and poloidal_region parameters.
 
         Returns
         -------
         xarray.DataArray
-            DataArray with data selected for the specified region
+            DataArray with data selected for the specified region.
         """
-        selection = slice_2d(self.data, name)
-        return self.data.isel(x=selection[0], theta=selection[1])
+        return _select_region(
+            self.data, radial_region, poloidal_region, custom_selection
+        )
 
     def unnormalise(self):
         """

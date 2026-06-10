@@ -1,10 +1,11 @@
-from xbout import open_boutdataset
-
 import os
+
 import numpy as np
 from netCDF4 import Dataset as ncDataset
+from xbout import open_boutdataset
 from xbout.region import _get_topology
-from .selectors import slice_poloidal
+
+from xhermes.selectors import selector_2d, selector_poloidal, selector_radial
 
 
 def open_hermesdataset(
@@ -291,6 +292,16 @@ def open_hermesdataset(
     if unnormalise:
         ds.hermes.unnormalise()
 
+    # Identify species before processing components that depend on ion_species.
+    meta["species"] = [
+        x.split("P")[1] for x in ds.data_vars if x.startswith("P") and len(x) < 4
+    ]
+    meta["charged_species"] = [x for x in meta["species"] if "e" in x or "+" in x]
+    meta["ion_species"] = [x for x in meta["species"] if "+" in x]
+    meta["neutral_species"] = list(
+        set(meta["species"]).difference(set(meta["charged_species"]))
+    )
+
     if ds.attrs["options"] is not None:
         # Process options
         options = ds.attrs["options"]
@@ -315,22 +326,6 @@ def open_hermesdataset(
             components[component] = {"type": c_type, "options": c_opts}
         ds.attrs["components"] = components
 
-        # Identify dimensions
-        dims = list(ds.squeeze().dims)
-        if "t" in dims:
-            dims.remove("t")
-        meta["dimensions"] = len(dims)
-
-        # Identify species
-        meta["species"] = [
-            x.split("P")[1] for x in ds.data_vars if x.startswith("P") and len(x) < 4
-        ]
-        meta["charged_species"] = [x for x in meta["species"] if "e" in x or "+" in x]
-        meta["ion_species"] = [x for x in meta["species"] if "+" in x]
-        meta["neutral_species"] = list(
-            set(meta["species"]).difference(set(meta["charged_species"]))
-        )
-
         # Prepare dictionary mapping recycling species pairs
         if "recycling" in ds.attrs["components"]:
             meta["recycling_pairs"] = dict()
@@ -339,6 +334,26 @@ def open_hermesdataset(
                     meta["recycling_pairs"][ion] = ds.options[ion]["recycle_as"]
                 else:
                     print(f"No recycling partner found for {ion}")
+
+    # Identify dimensions
+    dims = list(ds.squeeze().dims)
+    if "t" in dims:
+        dims.remove("t")
+    num_dims = len(dims)
+    meta["dimensions"] = num_dims
+
+    # Add geometry related metadata
+    meta["geometry_extracted"] = False
+    if num_dims == 1:
+        ds = ds.hermes.extract_1d_tokamak_geometry()
+        meta["geometry_extracted"] = True
+    elif ds.attrs.get("geometry") == "toroidal":
+        # Right now everything in the 2D function applies to 3D as well
+        ds = ds.hermes.extract_2d_tokamak_geometry()
+        meta["geometry_extracted"] = True
+
+    # Put back into dataset
+    ds.attrs["metadata"] = meta
 
     return ds
 
@@ -463,7 +478,7 @@ class HypnotoadGrid:
         ]:
             m[param] = int(self[param].data)
 
-        m["MYG"] = self.y_boundary_guards.data
+        m["MYG"] = int(self.y_boundary_guards)
         m["MXG"] = 2  # Hypnotoad grids always have X guards (?)
 
         # Put m back into the object temporarily to use xBOUT's topology detection
@@ -508,6 +523,43 @@ class HypnotoadGrid:
         m["jyseps2_2g"] = m["jyseps2_2"] + m["MYG"] * (num_targets - 1)
         m["ny_innerg"] = m["ny_inner"] + m["MYG"] * (num_targets - 1)
 
+        # X guards are always present in a Hypnotoad grid.
+        # They can be removed only with HypnotoadGrid.remove_guards(),
+        # where ixseps1g and ixseps2g are recalculated.
+        m["ixseps1g"] = m["ixseps1"]
+        m["ixseps2g"] = m["ixseps2"]
+
+        # Put metadata into the object once again with the extra entries
+        self.metadata = m
+
+    def _select_region(
+        self, radial_region=None, poloidal_region=None, custom_selection=None
+    ):
+        """
+        Select a radial/poloidal region from the a Dataset or DataArray
+
+        Parameters
+        ----------
+        poloidal_region : str
+            Poloidal region name to select. See xhermes.selectors.get_poloidal_slices.
+        radial_region : str
+            Radial region name to select. See xhermes.selectors.slice_2d.
+        custom_selection : tuple of slices, optional
+            Custom selection in the form (slice(x_start, x_end), slice(theta_start, theta_end)).
+            If provided, this will override the radial_region and poloidal_region parameters.
+
+        Returns
+        -------
+        xarray.Dataset or xarray.DataArray
+            Dataset with data selected for the specified region.
+        """
+        if custom_selection is not None:
+            selection = custom_selection
+        else:
+            selection = selector_2d(self.data, radial_region, poloidal_region)
+
+        return self.data.isel(x=selection[0], theta=selection[1])
+
     def remove_guards(self):
         """
         Removes radial and poloidal guard cells from Hypnotoad grid.
@@ -525,6 +577,9 @@ class HypnotoadGrid:
         if m["MXG"] == 0 and m["MYG"] == 0:
             raise RuntimeError("X and Y guards already removed")
 
+        selector_yguards = selector_poloidal(self, "yguards")
+        selector_xdomain = selector_radial(self, "domain")
+
         for key in new.keys():
             item = new[key]
 
@@ -533,12 +588,10 @@ class HypnotoadGrid:
                     # If 2D array, remove radial and poloidal guards
                     if len(item.shape) == 2:
                         if m["MXG"] != 0:
-                            item = item[slice(2, -2), slice(None)]
+                            item = item[selector_xdomain, :]
 
                         if m["MYG"] != 0:
-                            item = np.delete(
-                                item, slice_poloidal(new, "yguards"), axis=1
-                            )
+                            item = np.delete(item, selector_yguards, axis=1)
 
                     # If 1D array matching radial size, remove radial guards
                     if m["MXG"] != 0:
@@ -548,14 +601,23 @@ class HypnotoadGrid:
                     # If 1D array matching poloidal size, remove poloidal guards
                     if m["MYG"] != 0:
                         if len(item.shape) == 1 and item.shape[0] == new["ny"]:
-                            item = np.delete(item, slice_poloidal(new, "yguards"))
+                            item = np.delete(item, selector_yguards, axis=0)
 
                     new[key] = item
 
+        new.metadata["y_boundary_guards"] = 0
+        new["y_boundary_guards"] = 0
+
+        # Recalculate metadata now that guard cells are removed
+        new._add_metadata()
+
+        # _add_metadata has to assume MXG=2 as Hypnotoad doesn't allow no guard cells.
+        # We have to override it back to 0.
         new.metadata["MXG"] = 0
         new.metadata["MYG"] = 0
-        new.metadata["y_boundary_guards"] = 0
-        new["y_boundary_guads"] = 0
+        new.metadata["ixseps1g"] = new.metadata["ixseps1"] - 2
+        new.metadata["ixseps2g"] = new.metadata["ixseps2"] - 2
+        new.metadata["nxg"] = new.metadata["nx"] - 4
 
         return new
 
