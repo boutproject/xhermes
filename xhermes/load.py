@@ -401,7 +401,7 @@ class HypnotoadGrid:
                 self._data[name] = var[:]
 
         # Reproduce xBOUT variable name changes
-        if "Rxy_lower_left_corners" in self._data:
+        if "Rxy_corners" in self._data:
             self._data["Rxy_lower_left_corners"] = self._data.pop("Rxy_corners")
             self._data["Zxy_lower_left_corners"] = self._data.pop("Zxy_corners")
 
