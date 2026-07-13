@@ -1,2 +1,2 @@
-xarray>=0.18.0
+xarray>=2026.7.0
 xbout
