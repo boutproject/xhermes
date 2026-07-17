@@ -617,7 +617,6 @@ class HypnotoadGrid:
         if m["MXG"] == 0 and m["MYG"] == 0:
             raise RuntimeError("X and Y guards already removed")
 
-        selector_yguards = selector_poloidal(self, "yguards")
         selector_xdomain = selector_radial(self, "domain")
 
         for key in new.keys():
@@ -631,6 +630,7 @@ class HypnotoadGrid:
                             item = item[selector_xdomain, :]
 
                         if m["MYG"] != 0:
+                            selector_yguards = selector_poloidal(self, "yguards")
                             item = np.delete(item, selector_yguards, axis=1)
 
                     # If 1D array matching radial size, remove radial guards
@@ -640,6 +640,7 @@ class HypnotoadGrid:
 
                     # If 1D array matching poloidal size, remove poloidal guards
                     if m["MYG"] != 0:
+                        selector_yguards = selector_poloidal(self, "yguards")
                         if len(item.shape) == 1 and item.shape[0] == new["ny"]:
                             item = np.delete(item, selector_yguards, axis=0)
 
