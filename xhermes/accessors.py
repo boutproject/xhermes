@@ -3,7 +3,7 @@ from xarray import register_dataarray_accessor, register_dataset_accessor
 from xbout import BoutDataArrayAccessor, BoutDatasetAccessor
 
 from .selectors import _select_region, selector_poloidal, selector_radial
-from .plotting import plot_grid
+from .plotting import explore2d, plot_grid
 
 @register_dataset_accessor("hermes")
 class HermesDatasetAccessor(BoutDatasetAccessor):
@@ -388,19 +388,7 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
             self.data.attrs["units_type"] = "SI"
         return self
 
-    def polygon(self, **kwargs):
-
-        import matplotlib.pyplot as plt
-
-        if "ax" in kwargs.keys():
-            if kwargs["ax"] is None:
-                fig, ax = plt.subplots(figsize=(3, 6), dpi=120)
-                kwargs["ax"] = ax
-            else:
-                fig = kwargs["ax"].get_figure()
-        else:
-            fig, ax = plt.subplots(figsize=(3, 6), dpi=120)
-            kwargs["ax"] = ax
-
-        kwargs["separatrix"] = False
-        self.data.bout.polygon(**kwargs)
+    def explore2d(self, **kwargs):
+        """Explore a variable by plotting in 2D poloidal geometry, with sliders for time and toroidal angle if they exist. """
+        s = explore2d(self.data, **kwargs)
+        return s

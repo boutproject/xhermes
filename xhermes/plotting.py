@@ -1,5 +1,8 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
+from matplotlib.widgets import Slider
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 
@@ -432,3 +435,107 @@ def plot_grid(
         ax.set_ylim(ylim)
 
     return ax
+
+def explore2d(da, **kwargs):
+
+    if set(da.dims) == set(["t", "x", "theta", "zeta"]):
+            slider = plot2d_polygon_with_time_zeta_sliders(da, **kwargs)
+            return slider
+    elif set(da.dims) == set(["t", "x", "theta"]):
+        slider = plot2d_polygon_with_time_slider(da, **kwargs)
+        return slider
+    elif set(da.dims) == set(["x", "theta"]):
+        # Extract some grid information
+        rm = np.stack([da.Rxy_lower_left_corners, da.Rxy_upper_left_corners, da.Rxy_upper_right_corners, da.Rxy_lower_right_corners]).transpose(1,2,0)
+        zm = np.stack([da.Zxy_lower_left_corners, da.Zxy_upper_left_corners, da.Zxy_upper_right_corners, da.Zxy_lower_right_corners]).transpose(1,2,0)
+        nx = rm.shape[0]
+        ny = rm.shape[1]
+        _ = plot2d_polygon(da.values, rm, zm, nx, ny, **kwargs)
+        return None 
+
+def plot2d_polygon(vals, rm, zm, nx, ny, ax=None, vmin: float=None, vmax: float=None, lw=0.01, cmap="magma", logscale: bool=False, linthresh: float = 1.0):
+    """2D polygon plot in poloidal geometry. This is an alternative to xbout.polygon. Input da is assumed to contain only two dimensions: R and Z
+    """
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(3, 6), dpi=120)
+    else:
+        fig = ax.get_figure()
+    ax.set_aspect("equal")
+
+    #TODO: Include option to plot separatrix, targets, etc as in plot_grid()
+
+    vmax = np.max(vals)
+    vmin = np.min(vals)
+
+    patches = []
+    for iy in np.arange(0, ny):
+        for ix in np.arange(0, nx):
+            rcol = rm[ix, iy, :]
+            zcol = zm[ix, iy, :]
+            polygon = Polygon(np.column_stack((rcol, zcol)))
+            patches.append(polygon)
+
+    patch_vals = vals.transpose().flatten()
+
+    if logscale:
+        if vmin < 0:
+            norm = mpl.colors.SymLogNorm(
+                vmin=vmin, vmax=vmax, linthresh=linthresh
+            )
+        else:
+            norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
+    else:
+        norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+    p = PatchCollection(
+        patches,
+        norm=norm,
+        cmap=cmap,
+        edgecolor="none",
+        linewidth=0,
+        antialiased=False,
+    )
+
+    p.set_array(np.array(patch_vals))
+
+    ax.add_collection(p)
+    ax.autoscale_view()
+
+    return p
+
+def plot2d_polygon_with_time_slider(da, **kwargs):
+    """2D polygon plot in poloidal geometry with a time slider. Input da is assumed to contain three dimensions: t, R and Z
+    """
+    # Extract some grid information
+    rm = np.stack([da.Rxy_lower_left_corners, da.Rxy_upper_left_corners, da.Rxy_upper_right_corners, da.Rxy_lower_right_corners]).transpose(1,2,0)
+    zm = np.stack([da.Zxy_lower_left_corners, da.Zxy_upper_left_corners, da.Zxy_upper_right_corners, da.Zxy_lower_right_corners]).transpose(1,2,0)
+    nx = rm.shape[0]
+    ny = rm.shape[1]
+
+    all_vals = da.values
+
+    fig,ax = plt.subplots(figsize=(3, 6), dpi=120)
+
+    p = plot2d_polygon(all_vals[0,:,:], rm, zm, nx, ny, ax=ax, **kwargs)
+    p = [p]
+
+    def update_patch_values(timestep):
+        p[0].remove()
+        p[0].set_array(all_vals[timestep,:,:].transpose().flatten())
+        ax.add_collection(p[0])
+        # ax.set_title("timestep = " + str(val))
+
+        return p
+
+    ax_time_slider = fig.add_axes([0.15, 0.05, 0.6, 0.03])
+    time_slider = Slider(
+        ax=ax_time_slider,
+        label=r"Timestep",
+        valmin=0,
+        valmax=len(da.t)-1,
+        valinit=0,
+        valstep=1,
+    )
+    time_slider.on_changed(update_patch_values)
+
+    return time_slider
