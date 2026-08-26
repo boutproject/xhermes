@@ -3,7 +3,7 @@ from xarray import register_dataarray_accessor, register_dataset_accessor
 from xbout import BoutDataArrayAccessor, BoutDatasetAccessor
 
 from .selectors import _select_region, selector_poloidal, selector_radial
-
+from .plotting import plot_grid
 
 @register_dataset_accessor("hermes")
 class HermesDatasetAccessor(BoutDatasetAccessor):
@@ -302,6 +302,22 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
 
         return ds
 
+    def plot_grid(self, **kwargs):
+        """
+        Plot the grid of the dataset
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional keyword arguments to pass to xhermes.plotting.plot_grid.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The figure object containing the grid plot.
+        """
+        return plot_grid(self.data, **kwargs)
+
 
 @register_dataarray_accessor("hermes")
 class HermesDataArrayAccessor(BoutDataArrayAccessor):
@@ -371,3 +387,20 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
             self.data *= self.data.attrs["conversion"]
             self.data.attrs["units_type"] = "SI"
         return self
+
+    def polygon(self, **kwargs):
+
+        import matplotlib.pyplot as plt
+
+        if "ax" in kwargs.keys():
+            if kwargs["ax"] is None:
+                fig, ax = plt.subplots(figsize=(3, 6), dpi=120)
+                kwargs["ax"] = ax
+            else:
+                fig = kwargs["ax"].get_figure()
+        else:
+            fig, ax = plt.subplots(figsize=(3, 6), dpi=120)
+            kwargs["ax"] = ax
+
+        kwargs["separatrix"] = False
+        self.data.bout.polygon(**kwargs)
