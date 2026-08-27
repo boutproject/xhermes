@@ -1,10 +1,12 @@
 import matplotlib as mpl
+from matplotlib import animation
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from matplotlib.widgets import Slider
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
+import xbout
 
 from .selectors import selector_2d
 
@@ -436,13 +438,17 @@ def plot_grid(
 
     return ax
 
-def explore2d(da, **kwargs):
+def animate2d(da, savepath=None, fps=10, **kwargs):
 
-    if set(da.dims) == set(["t", "x", "theta", "zeta"]):
-            slider = plot2d_polygon_with_time_zeta_sliders(da, **kwargs)
-            return slider
-    elif set(da.dims) == set(["t", "x", "theta"]):
-        slider = plot2d_polygon_with_time_slider(da, **kwargs)
+    if "ax" not in kwargs.keys():
+        fig, ax = plt.subplots(figsize=(4, 6), dpi=120)
+        kwargs["ax"] = ax
+
+    #TODO: Add a better separatrix plotting routine that tracaes along cell corners, not cell centres 
+    xbout.plotting.utils.plot_separatrices(da, ax)
+
+    if set(da.dims) == set(["t", "x", "theta"]):
+        slider = plot2d_polygon_with_time_slider(da, savepath=savepath, fps=fps, **kwargs)
         return slider
     elif set(da.dims) == set(["x", "theta"]):
         # Extract some grid information
@@ -452,21 +458,35 @@ def explore2d(da, **kwargs):
         ny = rm.shape[1]
         _ = plot2d_polygon(da.values, rm, zm, nx, ny, **kwargs)
         return None 
+    else:
+        raise ValueError("Input da must have either dimensions (t, x, theta) or (x, theta)")
 
-def plot2d_polygon(vals, rm, zm, nx, ny, ax=None, vmin: float=None, vmax: float=None, lw=0.01, cmap="magma", logscale: bool=False, linthresh: float = 1.0):
+def plot2d_polygon(vals, 
+                   rm, 
+                   zm, 
+                   nx, 
+                   ny, 
+                   ax=None, 
+                   vmin: float=None, 
+                   vmax: float=None, 
+                   cmap="magma", 
+                   logscale: bool=False, 
+                   linthresh: float = 1.0):
     """2D polygon plot in poloidal geometry. This is an alternative to xbout.polygon. Input da is assumed to contain only two dimensions: R and Z
     """
 
     if ax is None:
-        fig, ax = plt.subplots(figsize=(3, 6), dpi=120)
+        fig, ax = plt.subplots(figsize=(4, 6), dpi=120)
     else:
         fig = ax.get_figure()
     ax.set_aspect("equal")
 
     #TODO: Include option to plot separatrix, targets, etc as in plot_grid()
 
-    vmax = np.max(vals)
-    vmin = np.min(vals)
+    if vmin is None:
+        vmin = np.min(vals)
+    if vmax is None:
+        vmax = np.max(vals)
 
     patches = []
     for iy in np.arange(0, ny):
@@ -503,7 +523,7 @@ def plot2d_polygon(vals, rm, zm, nx, ny, ax=None, vmin: float=None, vmax: float=
 
     return p
 
-def plot2d_polygon_with_time_slider(da, **kwargs):
+def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, **kwargs):
     """2D polygon plot in poloidal geometry with a time slider. Input da is assumed to contain three dimensions: t, R and Z
     """
     # Extract some grid information
@@ -514,28 +534,44 @@ def plot2d_polygon_with_time_slider(da, **kwargs):
 
     all_vals = da.values
 
-    fig,ax = plt.subplots(figsize=(3, 6), dpi=120)
+    ax = kwargs["ax"]
+    fig = ax.get_figure()
 
-    p = plot2d_polygon(all_vals[0,:,:], rm, zm, nx, ny, ax=ax, **kwargs)
+    p = plot2d_polygon(all_vals[0,:,:], rm, zm, nx, ny, vmin=np.min(all_vals), vmax=np.max(all_vals), **kwargs)
     p = [p]
 
-    def update_patch_values(timestep):
+    fig.colorbar(p[0], ax=ax, label=da.name + " [" + da.attrs.get("units", "") + "]")
+
+    def update_patch_values(time):            
+        timestep = np.argmin(np.abs(da.t.values - time/1e6))
         p[0].remove()
         p[0].set_array(all_vals[timestep,:,:].transpose().flatten())
         ax.add_collection(p[0])
-        # ax.set_title("timestep = " + str(val))
+        if savepath is not None:
+            ax.set_title(r"timestep = {:.1f} $\mu$s".format(time))
 
         return p
 
-    ax_time_slider = fig.add_axes([0.15, 0.05, 0.6, 0.03])
-    time_slider = Slider(
-        ax=ax_time_slider,
-        label=r"Timestep",
-        valmin=0,
-        valmax=len(da.t)-1,
-        valinit=0,
-        valstep=1,
-    )
-    time_slider.on_changed(update_patch_values)
+    if savepath is not None:
+        anim = animation.FuncAnimation(
+            fig,
+            update_patch_values,
+            frames=da.t.values*1e6,
+        )
+        anim.save(savepath, fps=fps)
+        plt.show()
+        return anim
 
-    return time_slider
+    else:
+        ax_time_slider = fig.add_axes([0.2, 0.05, 0.55, 0.03])
+        time_slider = Slider(
+            ax=ax_time_slider,
+            label=r"Time [$\mu$s]",
+            valmin=1e6*da.t.min().values,
+            valmax=1e6*da.t.max().values,
+            valinit=1e6*da.t.min().values,
+            # valstep=1,
+        )
+        time_slider.on_changed(update_patch_values)
+
+        return time_slider
