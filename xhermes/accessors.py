@@ -5,6 +5,7 @@ from xbout import BoutDataArrayAccessor, BoutDatasetAccessor
 from .selectors import _select_region, selector_poloidal, selector_radial
 from .plotting import animate2d, plot_grid
 
+
 @register_dataset_accessor("hermes")
 class HermesDatasetAccessor(BoutDatasetAccessor):
     """
@@ -109,31 +110,37 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         ds = ds.swap_dims({"y": "pos"})
         ds.coords["pos"].attrs = ds.coords["y"].attrs
 
-        ds["pos"].attrs.update({
-            "conversion": 1,
-            "units": "m",
-            "standard_name": "parallel position",
-            "long_name": "Parallel connection length",
-        })
+        ds["pos"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "parallel position",
+                "long_name": "Parallel connection length",
+            }
+        )
 
         # Derive and append metadata for the cross-sectional area
         # and volume. The conversions are 1 because the derivation
         # is from already-normalised parameters
         ds["da"] = ds.dx * ds.dz * ds.J / np.sqrt(ds.g_22)
-        ds["da"].attrs.update({
-            "conversion": 1,
-            "units": "m2",
-            "standard_name": "cross-sectional area",
-            "long_name": "Cell parallel cross-sectional area",
-        })
+        ds["da"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m2",
+                "standard_name": "cross-sectional area",
+                "long_name": "Cell parallel cross-sectional area",
+            }
+        )
 
         ds["dv"] = ds.J * ds.dx * ds.dy * ds.dz
-        ds["dv"].attrs.update({
-            "conversion": 1,
-            "units": "m3",
-            "standard_name": "cell volume",
-            "long_name": "Cell Volume",
-        })
+        ds["dv"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m3",
+                "standard_name": "cell volume",
+                "long_name": "Cell Volume",
+            }
+        )
 
         return ds
 
@@ -247,58 +254,68 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
             ["x", "theta"],
             ds["dx"].data * ds["dy"].data * ds["dz"].data * ds["J"].data,
         )
-        ds["dv"].attrs.update({
-            "conversion": 1,
-            "units": "m3",
-            "standard_name": "cell volume",
-            "long_name": "Cell volume",
-            "source": "xHermes",
-        })
+        ds["dv"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m3",
+                "standard_name": "cell volume",
+                "long_name": "Cell volume",
+                "source": "xHermes",
+            }
+        )
 
         # Cell areas in real space - comes from Jacobian
         # Note: can be calculated from flux space or real space coordinates:
         # dV = (hthe/Bpol) * (R*Bpol*dr) * dy*2pi = hthe * dy * dr * 2pi * R
         ds["dr"] = (["x", "theta"], ds.dx.data / (ds.R.data * ds.Bpxy.data))
-        ds["dr"].attrs.update({
-            "conversion": 1,
-            "units": "m",
-            "standard_name": "radial cell length",
-            "long_name": "Length of cell in the radial direction",
-            "source": "xHermes",
-        })
+        ds["dr"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "radial cell length",
+                "long_name": "Length of cell in the radial direction",
+                "source": "xHermes",
+            }
+        )
 
         ds["hthe"] = (["x", "theta"], ds["J"].data * ds["Bpxy"].data)  # h_theta
-        ds["hthe"].attrs.update({
-            "conversion": 1,
-            "units": "m/radian",
-            "standard_name": "h_theta: poloidal arc cell length per radian",
-            "long_name": "h_theta: poloidal arc cell length per radian",
-            "source": "xHermes",
-        })
+        ds["hthe"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m/radian",
+                "standard_name": "h_theta: poloidal arc cell length per radian",
+                "long_name": "h_theta: poloidal arc cell length per radian",
+                "source": "xHermes",
+            }
+        )
 
         ds["dpol"] = (
             ["x", "theta"],
             ds["dy"].data * ds["hthe"].data,
         )  # Poloidal cell length
-        ds["dpol"].attrs.update({
-            "conversion": 1,
-            "units": "m",
-            "standard_name": "Poloidal cell length",
-            "long_name": "Poloidal cell length",
-            "source": "xHermes",
-        })
+        ds["dpol"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "Poloidal cell length",
+                "long_name": "Poloidal cell length",
+                "source": "xHermes",
+            }
+        )
 
         ds["dtor"] = (
             ["x", "theta"],
             ds["dz"].data * np.sqrt(ds["g_33"].data),
         )  # Toroidal cell length
-        ds["dtor"].attrs.update({
-            "conversion": 1,
-            "units": "m",
-            "standard_name": "Toroidal cell length",
-            "long_name": "Toroidal cell length",
-            "source": "xHermes",
-        })
+        ds["dtor"].attrs.update(
+            {
+                "conversion": 1,
+                "units": "m",
+                "standard_name": "Toroidal cell length",
+                "long_name": "Toroidal cell length",
+                "source": "xHermes",
+            }
+        )
 
         return ds
 
@@ -405,6 +422,6 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
         return plot_grid(self.data, **kwargs)
 
     def animate2d(self, savepath=None, fps=10, **kwargs):
-        """Explore a variable by plotting in 2D poloidal geometry, with sliders for time and toroidal angle if they exist. """
+        """Explore a variable by plotting in 2D poloidal geometry, with sliders for time and toroidal angle if they exist."""
         s = animate2d(self.data, savepath=savepath, fps=fps, **kwargs)
         return s

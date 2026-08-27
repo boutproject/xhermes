@@ -148,17 +148,19 @@ def plot_grid(
 
     ax.set_title(title)
 
-    cmap = mpl.colors.ListedColormap([
-        "white",
-        "coral",
-        "limegreen",
-        "skyblue",
-        "violet",
-        "navy",
-        "grey",
-        "darkslategrey",
-        "deeppink",
-    ])
+    cmap = mpl.colors.ListedColormap(
+        [
+            "white",
+            "coral",
+            "limegreen",
+            "skyblue",
+            "violet",
+            "navy",
+            "grey",
+            "darkslategrey",
+            "deeppink",
+        ]
+    )
     norm = mpl.colors.BoundaryNorm(np.arange(-0.5, cmap.N + 0.5, 1), cmap.N)
 
     if plot_regions and plot_region_boundaries:
@@ -233,8 +235,7 @@ def plot_grid(
         for i in range(Nx):
             for j in range(Ny):
                 p = mpl.patches.Polygon(
-                    np
-                    .concatenate((cell_r[i][j][tuple(idx)], cell_z[i][j][tuple(idx)]))
+                    np.concatenate((cell_r[i][j][tuple(idx)], cell_z[i][j][tuple(idx)]))
                     .reshape(2, 5)
                     .T,
                     fill=False,
@@ -438,42 +439,63 @@ def plot_grid(
 
     return ax
 
+
 def animate2d(da, savepath=None, fps=10, **kwargs):
 
     if "ax" not in kwargs.keys():
         fig, ax = plt.subplots(figsize=(4, 6), dpi=120)
         kwargs["ax"] = ax
 
-    #TODO: Add a better separatrix plotting routine that tracaes along cell corners, not cell centres 
+    # TODO: Add a better separatrix plotting routine that tracaes along cell corners, not cell centres
     xbout.plotting.utils.plot_separatrices(da, ax)
 
     if set(da.dims) == set(["t", "x", "theta"]):
-        slider = plot2d_polygon_with_time_slider(da, savepath=savepath, fps=fps, **kwargs)
+        slider = plot2d_polygon_with_time_slider(
+            da, savepath=savepath, fps=fps, **kwargs
+        )
         return slider
     elif set(da.dims) == set(["x", "theta"]):
         # Extract some grid information
-        rm = np.stack([da.Rxy_lower_left_corners, da.Rxy_upper_left_corners, da.Rxy_upper_right_corners, da.Rxy_lower_right_corners]).transpose(1,2,0)
-        zm = np.stack([da.Zxy_lower_left_corners, da.Zxy_upper_left_corners, da.Zxy_upper_right_corners, da.Zxy_lower_right_corners]).transpose(1,2,0)
+        rm = np.stack(
+            [
+                da.Rxy_lower_left_corners,
+                da.Rxy_upper_left_corners,
+                da.Rxy_upper_right_corners,
+                da.Rxy_lower_right_corners,
+            ]
+        ).transpose(1, 2, 0)
+        zm = np.stack(
+            [
+                da.Zxy_lower_left_corners,
+                da.Zxy_upper_left_corners,
+                da.Zxy_upper_right_corners,
+                da.Zxy_lower_right_corners,
+            ]
+        ).transpose(1, 2, 0)
         nx = rm.shape[0]
         ny = rm.shape[1]
         _ = plot2d_polygon(da.values, rm, zm, nx, ny, **kwargs)
-        return None 
+        return None
     else:
-        raise ValueError("Input da must have either dimensions (t, x, theta) or (x, theta)")
+        raise ValueError(
+            "Input da must have either dimensions (t, x, theta) or (x, theta)"
+        )
 
-def plot2d_polygon(vals, 
-                   rm, 
-                   zm, 
-                   nx, 
-                   ny, 
-                   ax=None, 
-                   vmin: float=None, 
-                   vmax: float=None, 
-                   cmap="magma", 
-                   logscale: bool=False, 
-                   linthresh: float = 1.0):
-    """2D polygon plot in poloidal geometry. This is an alternative to xbout.polygon. Input da is assumed to contain only two dimensions: R and Z
-    """
+
+def plot2d_polygon(
+    vals,
+    rm,
+    zm,
+    nx,
+    ny,
+    ax=None,
+    vmin: float = None,
+    vmax: float = None,
+    cmap="magma",
+    logscale: bool = False,
+    linthresh: float = 1.0,
+):
+    """2D polygon plot in poloidal geometry. This is an alternative to xbout.polygon. Input da is assumed to contain only two dimensions: R and Z"""
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(4, 6), dpi=120)
@@ -481,7 +503,7 @@ def plot2d_polygon(vals,
         fig = ax.get_figure()
     ax.set_aspect("equal")
 
-    #TODO: Include option to plot separatrix, targets, etc as in plot_grid()
+    # TODO: Include option to plot separatrix, targets, etc as in plot_grid()
 
     if vmin is None:
         vmin = np.min(vals)
@@ -500,9 +522,7 @@ def plot2d_polygon(vals,
 
     if logscale:
         if vmin < 0:
-            norm = mpl.colors.SymLogNorm(
-                vmin=vmin, vmax=vmax, linthresh=linthresh
-            )
+            norm = mpl.colors.SymLogNorm(vmin=vmin, vmax=vmax, linthresh=linthresh)
         else:
             norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
     else:
@@ -523,12 +543,26 @@ def plot2d_polygon(vals,
 
     return p
 
+
 def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, **kwargs):
-    """2D polygon plot in poloidal geometry with a time slider. Input da is assumed to contain three dimensions: t, R and Z
-    """
+    """2D polygon plot in poloidal geometry with a time slider. Input da is assumed to contain three dimensions: t, R and Z"""
     # Extract some grid information
-    rm = np.stack([da.Rxy_lower_left_corners, da.Rxy_upper_left_corners, da.Rxy_upper_right_corners, da.Rxy_lower_right_corners]).transpose(1,2,0)
-    zm = np.stack([da.Zxy_lower_left_corners, da.Zxy_upper_left_corners, da.Zxy_upper_right_corners, da.Zxy_lower_right_corners]).transpose(1,2,0)
+    rm = np.stack(
+        [
+            da.Rxy_lower_left_corners,
+            da.Rxy_upper_left_corners,
+            da.Rxy_upper_right_corners,
+            da.Rxy_lower_right_corners,
+        ]
+    ).transpose(1, 2, 0)
+    zm = np.stack(
+        [
+            da.Zxy_lower_left_corners,
+            da.Zxy_upper_left_corners,
+            da.Zxy_upper_right_corners,
+            da.Zxy_lower_right_corners,
+        ]
+    ).transpose(1, 2, 0)
     nx = rm.shape[0]
     ny = rm.shape[1]
 
@@ -537,15 +571,24 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, **kwargs):
     ax = kwargs["ax"]
     fig = ax.get_figure()
 
-    p = plot2d_polygon(all_vals[0,:,:], rm, zm, nx, ny, vmin=np.min(all_vals), vmax=np.max(all_vals), **kwargs)
+    p = plot2d_polygon(
+        all_vals[0, :, :],
+        rm,
+        zm,
+        nx,
+        ny,
+        vmin=np.min(all_vals),
+        vmax=np.max(all_vals),
+        **kwargs,
+    )
     p = [p]
 
     fig.colorbar(p[0], ax=ax, label=da.name + " [" + da.attrs.get("units", "") + "]")
 
-    def update_patch_values(time):            
-        timestep = np.argmin(np.abs(da.t.values - time/1e6))
+    def update_patch_values(time):
+        timestep = np.argmin(np.abs(da.t.values - time / 1e6))
         p[0].remove()
-        p[0].set_array(all_vals[timestep,:,:].transpose().flatten())
+        p[0].set_array(all_vals[timestep, :, :].transpose().flatten())
         ax.add_collection(p[0])
         if savepath is not None:
             ax.set_title(r"timestep = {:.1f} $\mu$s".format(time))
@@ -556,7 +599,7 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, **kwargs):
         anim = animation.FuncAnimation(
             fig,
             update_patch_values,
-            frames=da.t.values*1e6,
+            frames=da.t.values * 1e6,
         )
         anim.save(savepath, fps=fps)
         plt.show()
@@ -567,10 +610,10 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, **kwargs):
         time_slider = Slider(
             ax=ax_time_slider,
             label=r"Time [$\mu$s]",
-            valmin=1e6*da.t.min().values,
-            valmax=1e6*da.t.max().values,
-            valinit=1e6*da.t.min().values,
-            # valstep=1,
+            valmin=1e6 * da.t.min().values,
+            valmax=1e6 * da.t.max().values,
+            valinit=1e6 * da.t.min().values,
+            valstep=1e6 * da.t.values,
         )
         time_slider.on_changed(update_patch_values)
 
