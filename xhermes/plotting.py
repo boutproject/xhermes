@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import xbout
 
-from .selectors import selector_2d
+from .selectors import selector_2d, get_sepx_coords
 
 
 def plot_selection(
@@ -440,18 +440,21 @@ def plot_grid(
     return ax
 
 
-def animate2d(da, savepath=None, fps=10, **kwargs):
+def animate2d(da, savepath=None, fps=10, separatrix=True, cbar: bool = True, **kwargs):
 
     if "ax" not in kwargs.keys():
         fig, ax = plt.subplots(figsize=(4, 6), dpi=120)
         kwargs["ax"] = ax
 
     # TODO: Add a better separatrix plotting routine that tracaes along cell corners, not cell centres
-    xbout.plotting.utils.plot_separatrices(da, ax)
+    if separatrix:
+        # xbout.plotting.utils.plot_separatrices(da, ax)
+        sepx_R, sepx_Z = get_sepx_coords(da)
+        ax.plot(sepx_R, sepx_Z,color="gray",linestyle="--",linewidth=1.0)
 
     if set(da.dims) == set(["t", "x", "theta"]):
         slider = plot2d_polygon_with_time_slider(
-            da, savepath=savepath, fps=fps, **kwargs
+            da, savepath=savepath, fps=fps, cbar=cbar, **kwargs
         )
         return slider
     elif set(da.dims) == set(["x", "theta"]):
@@ -493,6 +496,7 @@ def plot2d_polygon(
     vmax: float = None,
     cmap="magma",
     logscale: bool = False,
+    lw: float = 0.0,
     linthresh: float = 1.0,
 ):
     """2D polygon plot in poloidal geometry. This is an alternative to xbout.polygon. Input da is assumed to contain only two dimensions: R and Z"""
@@ -527,13 +531,19 @@ def plot2d_polygon(
             norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
     else:
         norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+    if lw != 0.0:
+        edgecolor = "black"
+        antialiased = True 
+    else:
+        edgecolor = "none"
+        antialiased = False
     p = PatchCollection(
         patches,
         norm=norm,
         cmap=cmap,
-        edgecolor="none",
-        linewidth=0,
-        antialiased=False,
+        edgecolor=edgecolor,
+        linewidth=lw,
+        antialiased=antialiased,
     )
 
     p.set_array(np.array(patch_vals))
@@ -544,7 +554,7 @@ def plot2d_polygon(
     return p
 
 
-def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, **kwargs):
+def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, cbar=True, **kwargs):
     """2D polygon plot in poloidal geometry with a time slider. Input da is assumed to contain three dimensions: t, R and Z"""
     # Extract some grid information
     rm = np.stack(
@@ -583,7 +593,13 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, **kwargs):
     )
     p = [p]
 
-    fig.colorbar(p[0], ax=ax, label=da.name + " [" + da.attrs.get("units", "") + "]")
+    if cbar:
+        try:
+            cbar_label = da.name + " [" + da.attrs.get("units", "") + "]"
+        except:
+            cbar_label = ""
+        fig.colorbar(p[0], ax=ax, label=cbar_label)
+
 
     def update_patch_values(time):
         timestep = np.argmin(np.abs(da.t.values - time / 1e6))

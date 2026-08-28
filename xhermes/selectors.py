@@ -498,3 +498,20 @@ def _select_region(ds, radial_region=None, poloidal_region=None, custom_selectio
         selection = selector_2d(ds, radial_region, poloidal_region)
 
     return ds.isel(x=selection[0], theta=selection[1])
+
+def get_sepx_coords(da):
+    """Get the R, Z coordinates of the separatrix"""
+
+    #TODO: Currently this only works for CDN geometry
+    sepx_R = list(da.Rxy_lower_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=range(da.metadata["ny_innerg"])))
+    sepx_Z = list(da.Zxy_lower_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=range(da.metadata["ny_innerg"])))
+    sepx_R += [da.Rxy_upper_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=da.metadata["ny_innerg"]-1)]
+    sepx_Z += [da.Zxy_upper_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=da.metadata["ny_innerg"]-1)]
+    sepx_R += [np.nan]
+    sepx_Z += [np.nan]
+    sepx_R += list(da.Rxy_lower_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=range(da.metadata["ny_innerg"],len(da.theta))))
+    sepx_Z += list(da.Zxy_lower_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=range(da.metadata["ny_innerg"],len(da.theta))))
+    sepx_R += [da.Rxy_upper_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=-1)]
+    sepx_Z += [da.Zxy_upper_right_corners.isel(x=da.metadata["ixseps1g"]-1,theta=-1)]
+
+    return sepx_R, sepx_Z

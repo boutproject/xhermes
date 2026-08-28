@@ -1,5 +1,5 @@
 import numpy as np
-from xarray import register_dataarray_accessor, register_dataset_accessor
+from xarray import register_dataarray_accessor, register_dataset_accessor, DataArray
 from xbout import BoutDataArrayAccessor, BoutDatasetAccessor
 
 from .selectors import _select_region, selector_poloidal, selector_radial
@@ -335,6 +335,19 @@ class HermesDatasetAccessor(BoutDatasetAccessor):
         """
         return plot_grid(self.data, **kwargs)
 
+    def plot_pol_gridslice(self, idx):
+
+        self.data["v"] = DataArray(np.zeros((len(self.data.x),len(self.data.theta))), coords=(self.data.x, self.data.theta))
+        self.data.v.loc[dict(x=idx)] = 1
+        animate2d(self.data.v, separatrix=False, cmap="gray_r", lw=0.01, cbar=False)
+
+    def plot_rad_gridslice(self, idx):
+
+        self.data["v"] = DataArray(np.zeros((len(self.data.x),len(self.data.theta))), coords=(self.data.x, self.data.theta))
+        theta_sel = self.data.theta.isel(theta=idx)
+        self.data.v.loc[dict(theta=theta_sel)] = 1
+        animate2d(self.data.v, separatrix=False, cmap="gray_r", lw=0.01, cbar=False)
+
 
 @register_dataarray_accessor("hermes")
 class HermesDataArrayAccessor(BoutDataArrayAccessor):
@@ -421,7 +434,28 @@ class HermesDataArrayAccessor(BoutDataArrayAccessor):
         """
         return plot_grid(self.data, **kwargs)
 
-    def animate2d(self, savepath=None, fps=10, **kwargs):
+    def animate2d(self, savepath=None, fps=10, separatrix=True, cbar=True, **kwargs):
         """Explore a variable by plotting in 2D poloidal geometry, with sliders for time and toroidal angle if they exist."""
-        s = animate2d(self.data, savepath=savepath, fps=fps, **kwargs)
+        s = animate2d(self.data, savepath=savepath, fps=fps, separatrix=separatrix, cbar=cbar, **kwargs)
         return s
+
+    def plot_pol_gridslice(self, idx):
+
+        v = 0 * self.data
+        if "t" in self.data.dims:
+                v = v.isel(t=0)
+        if "zeta" in self.data.dims:
+                    v = v.isel(zeta=0)
+        v.loc[dict(x=idx)] = 1
+        animate2d(v, separatrix=False, cmap="gray_r", lw=0.01, cbar=False)
+
+    def plot_rad_gridslice(self, idx):
+
+        v = 0 * self.data
+        if "t" in self.data.dims:
+            v = v.isel(t=0)
+        if "zeta" in self.data.dims:
+            v = v.isel(zeta=0)
+        theta_sel = self.data.theta.isel(theta=idx)
+        v.loc[dict(theta=theta_sel)] = 1
+        animate2d(v, separatrix=False, cmap="gray_r", lw=0.01, cbar=False)
