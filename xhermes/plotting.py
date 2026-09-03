@@ -527,6 +527,9 @@ def plot2d_polygon(
     if logscale:
         if vmin < 0:
             norm = mpl.colors.SymLogNorm(vmin=vmin, vmax=vmax, linthresh=linthresh)
+        elif vmin == 0:
+            vmin = 1e-4 * vmax
+            norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
         else:
             norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
     else:
