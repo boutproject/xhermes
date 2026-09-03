@@ -605,7 +605,7 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, cbar=True, **kwar
 
 
     def update_patch_values(time):
-        timestep = np.argmin(np.abs(da.t.values - time / 1e6))
+        timestep = np.argmin(np.abs((da.t.values-da.t.values[0]) - time / 1e6))
         p[0].remove()
         p[0].set_array(all_vals[timestep, :, :].transpose().flatten())
         ax.add_collection(p[0])
@@ -618,7 +618,7 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, cbar=True, **kwar
         anim = animation.FuncAnimation(
             fig,
             update_patch_values,
-            frames=da.t.values * 1e6,
+            frames=(da.t.values-da.t.values[0]) * 1e6,
         )
         anim.save(savepath, fps=fps)
         plt.show()
@@ -629,10 +629,10 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, cbar=True, **kwar
         time_slider = Slider(
             ax=ax_time_slider,
             label=r"Time [$\mu$s]",
-            valmin=1e6 * da.t.min().values,
-            valmax=1e6 * da.t.max().values,
-            valinit=1e6 * da.t.min().values,
-            valstep=1e6 * da.t.values,
+            valmin=1e6 * (da.t.values-da.t.values[0]).min(),
+            valmax=1e6 * (da.t.values-da.t.values[0]).max(),
+            valinit=1e6 * (da.t.values-da.t.values[0]).min(),
+            valstep=1e6 * (da.t.values-da.t.values[0]),
         )
         time_slider.on_changed(update_patch_values)
 
