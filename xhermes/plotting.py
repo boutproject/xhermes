@@ -480,7 +480,15 @@ def animate2d(da, savepath=None, fps=10, separatrix=True, cbar: bool = True, **k
         ).transpose(1, 2, 0)
         nx = rm.shape[0]
         ny = rm.shape[1]
-        _ = plot2d_polygon(da.values, rm, zm, nx, ny, **kwargs)
+        p = plot2d_polygon(da.values, rm, zm, nx, ny, **kwargs)
+
+        if cbar:
+            try:
+                cbar_label = da.name + " [" + da.attrs.get("units", "") + "]"
+            except:
+                cbar_label = ""
+            fig.colorbar(p, ax=ax, label=cbar_label)
+        
         return None
     else:
         raise ValueError(
