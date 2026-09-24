@@ -449,8 +449,11 @@ def animate2d(da, savepath=None, fps=10, separatrix=True, cbar: bool = True, **k
     # TODO: Add a better separatrix plotting routine that tracaes along cell corners, not cell centres
     if separatrix:
         # xbout.plotting.utils.plot_separatrices(da, ax)
-        sepx_R, sepx_Z = get_sepx_coords(da)
-        ax.plot(sepx_R, sepx_Z,color="gray",linestyle="--",linewidth=1.0)
+        try:
+            sepx_R, sepx_Z = get_sepx_coords(da)
+            ax.plot(sepx_R, sepx_Z,color="gray",linestyle="--",linewidth=1.0)
+        except AttributeError:
+            pass
 
     if set(da.dims) == set(["t", "x", "theta"]):
         slider = plot2d_polygon_with_time_slider(
