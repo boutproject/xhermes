@@ -509,6 +509,8 @@ def plot2d_polygon(
     logscale: bool = False,
     lw: float = 0.0,
     linthresh: float = 1.0,
+    xlim: None | list = None,
+    ylim: None | list = None
 ):
     """2D polygon plot in poloidal geometry. This is an alternative to xbout.polygon. Input da is assumed to contain only two dimensions: R and Z"""
 
@@ -565,6 +567,11 @@ def plot2d_polygon(
     ax.add_collection(p)
     ax.autoscale_view()
 
+    if xlim is not None:
+        ax.set_xlim(xlim)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+
     return p
 
 
@@ -592,6 +599,11 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, cbar=True, **kwar
 
     all_vals = da.values
 
+    if "vmin" not in kwargs.keys():
+        kwargs["vmin"]=np.min(all_vals)
+    if "vmax" not in kwargs.keys():
+        kwargs["vmax"]=np.max(all_vals)
+
     ax = kwargs["ax"]
     fig = ax.get_figure()
 
@@ -601,8 +613,6 @@ def plot2d_polygon_with_time_slider(da, savepath=None, fps=10, cbar=True, **kwar
         zm,
         nx,
         ny,
-        vmin=np.min(all_vals),
-        vmax=np.max(all_vals),
         **kwargs,
     )
     p = [p]
